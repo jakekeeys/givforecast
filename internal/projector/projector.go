@@ -1,6 +1,7 @@
 package projector
 
 import (
+	"fmt"
 	"ge-charge-optimiser/internal/solcast"
 	"math"
 	"time"
@@ -11,6 +12,7 @@ type Config struct {
 	StorageCapacityKwh float64
 	GridPeakStartH     int
 	GridPeakStartM     int
+	InverterEfficiency float64
 }
 
 func WithConfig(c *Config) Option {
@@ -30,10 +32,11 @@ func New(sc *solcast.Client, opts ...Option) *Projector {
 	projector := &Projector{
 		sc: sc,
 		config: &Config{
-			BaseConsumptionKwh: 1.00,
+			BaseConsumptionKwh: 1.1,
 			StorageCapacityKwh: 16.38,
 			GridPeakStartH:     7,
 			GridPeakStartM:     30,
+			InverterEfficiency: 0.9,
 		},
 	}
 
@@ -45,12 +48,13 @@ func New(sc *solcast.Client, opts ...Option) *Projector {
 }
 
 type Estimate struct {
-	Date           time.Time
-	KwhProduction  float64
-	KwhConsumption float64
-	KwhExcess      float64
-	ChargeTarget   float64
-	Projections    []*Projection
+	Date                    time.Time
+	ProductionKwh           float64
+	ConsumptionKwh          float64
+	ChargeKwh               float64
+	DischargeKwh            float64
+	RecommendedChargeTarget float64
+	Projections             []*Projection
 }
 
 type Projection struct {
@@ -72,9 +76,8 @@ func (p *Projector) Project(t time.Time) (*Estimate, error) {
 	}
 
 	t = t.Truncate(time.Hour * 24)
-	var todayKwhProduction, todayKwhConsumption, todayKwhExcessProduction, maxSOC float64
+	var dayProductionKwh, dayConsumptionKwh, dayMaxSOC, dayDischargeKwh, dayChargeKwh float64
 	var projections []*Projection
-	storageKwh := p.config.StorageCapacityKwh
 	for _, forecast := range forecast.Forecasts {
 		if forecast.PeriodEnd.After(t.AddDate(0, 0, 1)) || forecast.PeriodEnd.Before(t) {
 			continue
@@ -89,20 +92,21 @@ func (p *Projector) Project(t time.Time) (*Estimate, error) {
 		}
 
 		consumptionKwh := p.config.BaseConsumptionKwh * 0.5
-		todayKwhConsumption = todayKwhConsumption + consumptionKwh
+		dayConsumptionKwh = dayConsumptionKwh + consumptionKwh
 
 		productionKwh := forecast.PvEstimate * 0.5
-		todayKwhProduction = todayKwhProduction + productionKwh
+		dayProductionKwh = dayProductionKwh + productionKwh
 
-		netConsumption := consumptionKwh - productionKwh
-		if netConsumption < 0 {
-			todayKwhExcessProduction = todayKwhExcessProduction + math.Abs(netConsumption)
+		netKwh := consumptionKwh - productionKwh
+		if netKwh > 0 {
+			dayDischargeKwh = dayDischargeKwh + netKwh*((1-p.config.InverterEfficiency)+1)
+		} else {
+			dayChargeKwh = dayChargeKwh + (math.Abs(netKwh) * p.config.InverterEfficiency)
 		}
 
-		storageKwh = storageKwh - netConsumption
-		storageSOC := (storageKwh / p.config.StorageCapacityKwh) * 100
-		if storageSOC > maxSOC {
-			maxSOC = storageSOC
+		storageSOC := (((p.config.StorageCapacityKwh - dayDischargeKwh) + dayChargeKwh) / p.config.StorageCapacityKwh) * 100
+		if storageSOC > dayMaxSOC {
+			dayMaxSOC = storageSOC
 		}
 
 		projections = append(projections, &Projection{
@@ -112,23 +116,26 @@ func (p *Projector) Project(t time.Time) (*Estimate, error) {
 			KwNet:         p.config.BaseConsumptionKwh - forecast.PvEstimate,
 			SOC:           storageSOC,
 		})
+
+		println(fmt.Sprintf("time: %s, consumption: %.2f, production %.2f, soc: %.2f, net: %.2f, discharged: %.2f, charged: %.2f", forecast.PeriodEnd, dayConsumptionKwh, dayProductionKwh, storageSOC, netKwh, dayDischargeKwh, dayChargeKwh))
 	}
 
-	chargeTarget := 100.0
-	if maxSOC > 100 {
-		chargeTarget = math.Abs((maxSOC - 100) - 100)
+	recommendedChargeTarget := 100.0
+	if dayMaxSOC > 100 {
+		recommendedChargeTarget = math.Abs((dayMaxSOC - 100) - 100)
 	}
 
 	for _, projection := range projections {
-		projection.SOC = projection.SOC - 100 + chargeTarget
+		projection.SOC = projection.SOC - 100 + recommendedChargeTarget
 	}
 
 	return &Estimate{
-		Date:           t,
-		KwhProduction:  todayKwhProduction,
-		KwhConsumption: todayKwhConsumption,
-		KwhExcess:      todayKwhExcessProduction,
-		ChargeTarget:   chargeTarget,
-		Projections:    projections,
+		Date:                    t,
+		ProductionKwh:           dayProductionKwh,
+		ConsumptionKwh:          dayConsumptionKwh,
+		ChargeKwh:               dayChargeKwh,
+		DischargeKwh:            dayDischargeKwh,
+		RecommendedChargeTarget: recommendedChargeTarget,
+		Projections:             projections,
 	}, nil
 }
