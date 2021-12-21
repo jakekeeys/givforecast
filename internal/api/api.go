@@ -17,7 +17,7 @@ func NewServer(p *projector.Projector) *Server {
 	return &Server{p: p}
 }
 
-func (s *Server) GetChargeTarget(c *gin.Context) {
+func (s *Server) Project(c *gin.Context) {
 	ds := c.Query("date")
 	if ds == "" {
 		ds = time.Now().Format(dateFormat)
@@ -25,16 +25,34 @@ func (s *Server) GetChargeTarget(c *gin.Context) {
 
 	d, err := time.Parse(dateFormat, ds)
 	if err != nil {
-		_ = c.Error(err)
+		c.String(http.StatusBadRequest, err.Error())
 		return
 	}
 
-	e, err := s.p.EstimateChargeTargetForDate(d)
+	today := time.Now().Truncate(time.Hour * 24)
+	if d.Before(today) {
+		c.String(http.StatusBadRequest, "date must be today or < 7 days in the future")
+		return
+	}
+
+	if d.After(today.AddDate(0, 0, 6)) {
+		c.String(http.StatusBadRequest, "date must be today or < 7 days in the future")
+		return
+	}
+
+	projection, err := s.p.Project(d)
 	if err != nil {
 		_ = c.Error(err)
 		return
 	}
 
-	c.JSON(http.StatusOK, e)
+	c.JSON(http.StatusOK, projection)
+	return
+}
+
+func (s *Server) Config(c *gin.Context) {
+	config := s.p.GetConfig()
+
+	c.JSON(http.StatusOK, config)
 	return
 }

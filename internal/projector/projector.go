@@ -6,22 +6,46 @@ import (
 	"time"
 )
 
-const (
-	BaseConsumptionKw     = 0.85
-	StorageCapacityKwh    = 16.4
-	PeakConsumptionStartH = 7
-	peakConsumptionStartM = 30
-)
-
-type Projector struct {
-	sc *solcast.Client
+type Config struct {
+	BaseConsumptionKwh float64
+	StorageCapacityKwh float64
+	GridPeakStartH     int
+	GridPeakStartM     int
 }
 
-func New(sc *solcast.Client) *Projector {
-	return &Projector{sc: sc}
+func WithConfig(c *Config) Option {
+	return func(p *Projector) {
+		p.config = c
+	}
+}
+
+type Option func(p *Projector)
+
+type Projector struct {
+	sc     *solcast.Client
+	config *Config
+}
+
+func New(sc *solcast.Client, opts ...Option) *Projector {
+	projector := &Projector{
+		sc: sc,
+		config: &Config{
+			BaseConsumptionKwh: 1.00,
+			StorageCapacityKwh: 16.38,
+			GridPeakStartH:     7,
+			GridPeakStartM:     30,
+		},
+	}
+
+	for _, opt := range opts {
+		opt(projector)
+	}
+
+	return projector
 }
 
 type Estimate struct {
+	Date           time.Time
 	KwhProduction  float64
 	KwhConsumption float64
 	KwhExcess      float64
@@ -37,7 +61,11 @@ type Projection struct {
 	SOC           float64
 }
 
-func (p *Projector) EstimateChargeTargetForDate(t time.Time) (*Estimate, error) {
+func (p *Projector) GetConfig() *Config {
+	return p.config
+}
+
+func (p *Projector) Project(t time.Time) (*Estimate, error) {
 	forecast, err := p.sc.GetForecast()
 	if err != nil {
 		return nil, err
@@ -46,21 +74,21 @@ func (p *Projector) EstimateChargeTargetForDate(t time.Time) (*Estimate, error) 
 	t = t.Truncate(time.Hour * 24)
 	var todayKwhProduction, todayKwhConsumption, todayKwhExcessProduction, maxSOC float64
 	var projections []*Projection
-	storageKwh := StorageCapacityKwh
+	storageKwh := p.config.StorageCapacityKwh
 	for _, forecast := range forecast.Forecasts {
 		if forecast.PeriodEnd.After(t.AddDate(0, 0, 1)) || forecast.PeriodEnd.Before(t) {
 			continue
 		}
 
-		if forecast.PeriodEnd.Hour() <= PeakConsumptionStartH {
+		if forecast.PeriodEnd.Hour() <= p.config.GridPeakStartH {
 			continue
 		}
 
-		if forecast.PeriodEnd.Hour() == PeakConsumptionStartH && forecast.PeriodEnd.Minute() == peakConsumptionStartM {
+		if forecast.PeriodEnd.Hour() == p.config.GridPeakStartH && forecast.PeriodEnd.Minute() == p.config.GridPeakStartM {
 			continue
 		}
 
-		consumptionKwh := BaseConsumptionKw * 0.5
+		consumptionKwh := p.config.BaseConsumptionKwh * 0.5
 		todayKwhConsumption = todayKwhConsumption + consumptionKwh
 
 		productionKwh := forecast.PvEstimate * 0.5
@@ -72,7 +100,7 @@ func (p *Projector) EstimateChargeTargetForDate(t time.Time) (*Estimate, error) 
 		}
 
 		storageKwh = storageKwh - netConsumption
-		storageSOC := (storageKwh / StorageCapacityKwh) * 100
+		storageSOC := (storageKwh / p.config.StorageCapacityKwh) * 100
 		if storageSOC > maxSOC {
 			maxSOC = storageSOC
 		}
@@ -80,11 +108,10 @@ func (p *Projector) EstimateChargeTargetForDate(t time.Time) (*Estimate, error) 
 		projections = append(projections, &Projection{
 			PeriodEnd:     forecast.PeriodEnd,
 			KwProduction:  forecast.PvEstimate,
-			KwConsumption: BaseConsumptionKw,
-			KwNet:         BaseConsumptionKw - forecast.PvEstimate,
+			KwConsumption: p.config.BaseConsumptionKwh,
+			KwNet:         p.config.BaseConsumptionKwh - forecast.PvEstimate,
 			SOC:           storageSOC,
 		})
-		//println(fmt.Sprintf("estimated soc %.2f @ %s", (storageKwh/StorageCapacityKwh)*100, forecast.PeriodEnd))
 	}
 
 	chargeTarget := 100.0
@@ -97,6 +124,7 @@ func (p *Projector) EstimateChargeTargetForDate(t time.Time) (*Estimate, error) 
 	}
 
 	return &Estimate{
+		Date:           t,
 		KwhProduction:  todayKwhProduction,
 		KwhConsumption: todayKwhConsumption,
 		KwhExcess:      todayKwhExcessProduction,

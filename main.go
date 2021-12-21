@@ -14,7 +14,9 @@ func main() {
 	p := projector.New(sc)
 	s := api.NewServer(p)
 
-	r.GET("/target", s.GetChargeTarget)
+	r.GET("/project", s.Project)
+	r.GET("/config", s.Config)
+
 	err := r.Run(":8080")
 	if err != nil {
 		panic(err)
