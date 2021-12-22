@@ -15,7 +15,7 @@ type Client struct {
 	apiKey     string
 	baseURL    string
 	resourceID string
-	data       *ForecastResponse
+	data       *ForecastData
 	c          *http.Client
 }
 
@@ -29,7 +29,7 @@ func NewClient(apiKey, resourceID string) *Client {
 	}
 }
 
-type ForecastResponse struct {
+type ForecastData struct {
 	Forecasts []Forecast `json:"forecasts"`
 }
 
@@ -55,7 +55,7 @@ func (c *Client) UpdateForecast() error {
 		return err
 	}
 
-	var forecastResponse *ForecastResponse
+	var forecastResponse *ForecastData
 	err = json.NewDecoder(bytes.NewReader(body)).Decode(forecastResponse)
 	if err != nil {
 		return err
@@ -65,7 +65,7 @@ func (c *Client) UpdateForecast() error {
 	return nil
 }
 
-func (c *Client) GetForecast() (*ForecastResponse, error) {
+func (c *Client) GetForecast() (*ForecastData, error) {
 	if c.data == nil {
 		err := c.UpdateForecast()
 		if err != nil {

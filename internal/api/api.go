@@ -25,6 +25,16 @@ func NewServer(f *forecaster.Forecaster, sc *solcast.Client, gtcpc *givtcp.Clien
 	}
 }
 
+func (s *Server) UpdateForecastData(c *gin.Context) {
+	err := s.sc.UpdateForecast()
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
+
+	return
+}
+
 func (s *Server) UpdateChargeTarget(c *gin.Context) {
 	config := s.f.GetConfig()
 
