@@ -1,7 +1,7 @@
 package api
 
 import (
-	"ge-charge-optimiser/internal/projector"
+	"ge-charge-optimiser/internal/forecaster"
 	"github.com/gin-gonic/gin"
 	"net/http"
 	"time"
@@ -10,11 +10,11 @@ import (
 const dateFormat = "2006-01-02"
 
 type Server struct {
-	p *projector.Projector
+	f *forecaster.Forecaster
 }
 
-func NewServer(p *projector.Projector) *Server {
-	return &Server{p: p}
+func NewServer(f *forecaster.Forecaster) *Server {
+	return &Server{f: f}
 }
 
 func (s *Server) Project(c *gin.Context) {
@@ -40,7 +40,7 @@ func (s *Server) Project(c *gin.Context) {
 		return
 	}
 
-	projection, err := s.p.Project(d)
+	projection, err := s.f.ForecastDay(d)
 	if err != nil {
 		_ = c.Error(err)
 		return
@@ -51,7 +51,7 @@ func (s *Server) Project(c *gin.Context) {
 }
 
 func (s *Server) Config(c *gin.Context) {
-	config := s.p.GetConfig()
+	config := s.f.GetConfig()
 
 	c.JSON(http.StatusOK, config)
 	return

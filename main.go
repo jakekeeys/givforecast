@@ -2,7 +2,7 @@ package main
 
 import (
 	"ge-charge-optimiser/internal/api"
-	"ge-charge-optimiser/internal/projector"
+	"ge-charge-optimiser/internal/forecaster"
 	"ge-charge-optimiser/internal/solcast"
 	"github.com/gin-gonic/gin"
 )
@@ -11,7 +11,7 @@ func main() {
 	r := gin.Default()
 
 	sc := solcast.NewClient()
-	p := projector.New(sc)
+	p := forecaster.New(sc)
 	s := api.NewServer(p)
 
 	r.GET("/project", s.Project)

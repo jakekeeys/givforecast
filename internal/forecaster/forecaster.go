@@ -1,7 +1,6 @@
-package projector
+package forecaster
 
 import (
-	"fmt"
 	"ge-charge-optimiser/internal/solcast"
 	"math"
 	"time"
@@ -16,20 +15,20 @@ type Config struct {
 }
 
 func WithConfig(c *Config) Option {
-	return func(p *Projector) {
+	return func(p *Forecaster) {
 		p.config = c
 	}
 }
 
-type Option func(p *Projector)
+type Option func(p *Forecaster)
 
-type Projector struct {
+type Forecaster struct {
 	sc     *solcast.Client
 	config *Config
 }
 
-func New(sc *solcast.Client, opts ...Option) *Projector {
-	projector := &Projector{
+func New(sc *solcast.Client, opts ...Option) *Forecaster {
+	projector := &Forecaster{
 		sc: sc,
 		config: &Config{
 			BaseConsumptionKwh: 1.1,
@@ -47,51 +46,52 @@ func New(sc *solcast.Client, opts ...Option) *Projector {
 	return projector
 }
 
-type Estimate struct {
+type ForecastDay struct {
 	Date                    time.Time
 	ProductionKwh           float64
 	ConsumptionKwh          float64
 	ChargeKwh               float64
 	DischargeKwh            float64
 	RecommendedChargeTarget float64
-	Projections             []*Projection
+	Forecasts               []*Forecast
 }
 
-type Projection struct {
-	PeriodEnd     time.Time
-	KwProduction  float64
-	KwConsumption float64
-	KwNet         float64
-	SOC           float64
+type Forecast struct {
+	PeriodEnd      time.Time
+	ProductionKwh  float64
+	ConsumptionKwh float64
+	ChargeKwh      float64
+	DischargeKwh   float64
+	SOC            float64
 }
 
-func (p *Projector) GetConfig() *Config {
-	return p.config
+func (f *Forecaster) GetConfig() *Config {
+	return f.config
 }
 
-func (p *Projector) Project(t time.Time) (*Estimate, error) {
-	forecast, err := p.sc.GetForecast()
+func (f *Forecaster) ForecastDay(t time.Time) (*ForecastDay, error) {
+	forecast, err := f.sc.GetForecast()
 	if err != nil {
 		return nil, err
 	}
 
 	t = t.Truncate(time.Hour * 24)
 	var dayProductionKwh, dayConsumptionKwh, dayMaxSOC, dayDischargeKwh, dayChargeKwh float64
-	var projections []*Projection
+	var forecasts []*Forecast
 	for _, forecast := range forecast.Forecasts {
 		if forecast.PeriodEnd.After(t.AddDate(0, 0, 1)) || forecast.PeriodEnd.Before(t) {
 			continue
 		}
 
-		if forecast.PeriodEnd.Hour() <= p.config.GridPeakStartH {
+		if forecast.PeriodEnd.Hour() <= f.config.GridPeakStartH {
 			continue
 		}
 
-		if forecast.PeriodEnd.Hour() == p.config.GridPeakStartH && forecast.PeriodEnd.Minute() == p.config.GridPeakStartM {
+		if forecast.PeriodEnd.Hour() == f.config.GridPeakStartH && forecast.PeriodEnd.Minute() == f.config.GridPeakStartM {
 			continue
 		}
 
-		consumptionKwh := p.config.BaseConsumptionKwh * 0.5
+		consumptionKwh := f.config.BaseConsumptionKwh * 0.5
 		dayConsumptionKwh = dayConsumptionKwh + consumptionKwh
 
 		productionKwh := forecast.PvEstimate * 0.5
@@ -99,25 +99,26 @@ func (p *Projector) Project(t time.Time) (*Estimate, error) {
 
 		netKwh := consumptionKwh - productionKwh
 		if netKwh > 0 {
-			dayDischargeKwh = dayDischargeKwh + netKwh*((1-p.config.InverterEfficiency)+1)
+			dayDischargeKwh = dayDischargeKwh + netKwh*((1-f.config.InverterEfficiency)+1)
 		} else {
-			dayChargeKwh = dayChargeKwh + (math.Abs(netKwh) * p.config.InverterEfficiency)
+			dayChargeKwh = dayChargeKwh + (math.Abs(netKwh) * f.config.InverterEfficiency)
 		}
 
-		storageSOC := (((p.config.StorageCapacityKwh - dayDischargeKwh) + dayChargeKwh) / p.config.StorageCapacityKwh) * 100
+		storageSOC := (((f.config.StorageCapacityKwh - dayDischargeKwh) + dayChargeKwh) / f.config.StorageCapacityKwh) * 100
 		if storageSOC > dayMaxSOC {
 			dayMaxSOC = storageSOC
 		}
 
-		projections = append(projections, &Projection{
-			PeriodEnd:     forecast.PeriodEnd,
-			KwProduction:  forecast.PvEstimate,
-			KwConsumption: p.config.BaseConsumptionKwh,
-			KwNet:         p.config.BaseConsumptionKwh - forecast.PvEstimate,
-			SOC:           storageSOC,
+		forecasts = append(forecasts, &Forecast{
+			PeriodEnd:      forecast.PeriodEnd,
+			ProductionKwh:  forecast.PvEstimate,
+			ConsumptionKwh: f.config.BaseConsumptionKwh,
+			DischargeKwh:   dayDischargeKwh,
+			ChargeKwh:      dayChargeKwh,
+			SOC:            storageSOC,
 		})
 
-		println(fmt.Sprintf("time: %s, consumption: %.2f, production %.2f, soc: %.2f, net: %.2f, discharged: %.2f, charged: %.2f", forecast.PeriodEnd, dayConsumptionKwh, dayProductionKwh, storageSOC, netKwh, dayDischargeKwh, dayChargeKwh))
+		//println(fmt.Sprintf("time: %s, consumption: %.2f, production %.2f, soc: %.2f, net: %.2f, discharged: %.2f, charged: %.2f", forecast.PeriodEnd, dayConsumptionKwh, dayProductionKwh, storageSOC, netKwh, dayDischargeKwh, dayChargeKwh))
 	}
 
 	recommendedChargeTarget := 100.0
@@ -125,17 +126,17 @@ func (p *Projector) Project(t time.Time) (*Estimate, error) {
 		recommendedChargeTarget = math.Abs((dayMaxSOC - 100) - 100)
 	}
 
-	for _, projection := range projections {
+	for _, projection := range forecasts {
 		projection.SOC = projection.SOC - 100 + recommendedChargeTarget
 	}
 
-	return &Estimate{
+	return &ForecastDay{
 		Date:                    t,
 		ProductionKwh:           dayProductionKwh,
 		ConsumptionKwh:          dayConsumptionKwh,
 		ChargeKwh:               dayChargeKwh,
 		DischargeKwh:            dayDischargeKwh,
 		RecommendedChargeTarget: recommendedChargeTarget,
-		Projections:             projections,
+		Forecasts:               forecasts,
 	}, nil
 }
