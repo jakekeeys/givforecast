@@ -1,6 +1,7 @@
 package forecaster
 
 import (
+	"errors"
 	"ge-charge-optimiser/internal/solcast"
 	"math"
 	"time"
@@ -62,11 +63,56 @@ type Forecast struct {
 	ConsumptionKwh float64
 	ChargeKwh      float64
 	DischargeKwh   float64
+	ProductionW    float64
+	ConsumptionW   float64
+	ChargeW        float64
+	DischargeW     float64
 	SOC            float64
 }
 
 func (f *Forecaster) GetConfig() *Config {
 	return f.config
+}
+
+func (f *Forecaster) ForecastNow() (*Forecast, error) {
+	fc, err := f.ForecastDay(time.Now().Local())
+	if err != nil {
+		return nil, err
+	}
+
+	now := time.Now().Local()
+	peakStartToday := time.Date(now.Year(), now.Month(), now.Day(), f.config.GridPeakStartH, f.config.GridPeakStartH, 0, 0, time.Local)
+	if now.Before(peakStartToday) {
+		return &Forecast{
+			PeriodEnd:      peakStartToday,
+			ProductionKwh:  0,
+			ConsumptionKwh: 0,
+			ChargeKwh:      0,
+			DischargeKwh:   0,
+			SOC:            fc.RecommendedChargeTarget,
+		}, nil
+	}
+
+	for _, forecast := range fc.Forecasts {
+		if forecast.PeriodEnd.Before(now) {
+			continue
+		}
+
+		return &Forecast{
+			PeriodEnd:      forecast.PeriodEnd.Local(),
+			ProductionKwh:  forecast.ProductionKwh,
+			ConsumptionKwh: forecast.ConsumptionKwh,
+			ChargeKwh:      forecast.ChargeKwh,
+			DischargeKwh:   forecast.DischargeKwh,
+			ProductionW:    forecast.ProductionW,
+			ConsumptionW:   forecast.ConsumptionW,
+			ChargeW:        forecast.ChargeW,
+			DischargeW:     forecast.DischargeW,
+			SOC:            forecast.SOC,
+		}, nil
+	}
+
+	return nil, errors.New("unable find matching forecast")
 }
 
 func (f *Forecaster) ForecastDay(t time.Time) (*ForecastDay, error) {
@@ -98,10 +144,13 @@ func (f *Forecaster) ForecastDay(t time.Time) (*ForecastDay, error) {
 		dayProductionKwh = dayProductionKwh + productionKwh
 
 		netKwh := consumptionKwh - productionKwh
+		var chargeKw, dischargeKw float64
 		if netKwh > 0 {
-			dayDischargeKwh = dayDischargeKwh + netKwh*((1-f.config.InverterEfficiency)+1)
+			dischargeKw = netKwh * ((1 - f.config.InverterEfficiency) + 1)
+			dayDischargeKwh = dayDischargeKwh + dischargeKw
 		} else {
-			dayChargeKwh = dayChargeKwh + (math.Abs(netKwh) * f.config.InverterEfficiency)
+			chargeKw = (math.Abs(netKwh) * f.config.InverterEfficiency)
+			dayChargeKwh = dayChargeKwh + chargeKw
 		}
 
 		storageSOC := (((f.config.StorageCapacityKwh - dayDischargeKwh) + dayChargeKwh) / f.config.StorageCapacityKwh) * 100
@@ -110,15 +159,19 @@ func (f *Forecaster) ForecastDay(t time.Time) (*ForecastDay, error) {
 		}
 
 		forecasts = append(forecasts, &Forecast{
-			PeriodEnd:      forecast.PeriodEnd,
-			ProductionKwh:  forecast.PvEstimate,
-			ConsumptionKwh: f.config.BaseConsumptionKwh,
-			DischargeKwh:   dayDischargeKwh,
+			PeriodEnd:      forecast.PeriodEnd.Local(),
+			ProductionKwh:  dayProductionKwh,
+			ConsumptionKwh: dayConsumptionKwh,
 			ChargeKwh:      dayChargeKwh,
+			DischargeKwh:   dayDischargeKwh,
+			ProductionW:    productionKwh * 2 * 1000,
+			ConsumptionW:   consumptionKwh * 2 * 1000,
+			ChargeW:        chargeKw * 2 * 1000,
+			DischargeW:     dischargeKw * 2 * 1000,
 			SOC:            storageSOC,
 		})
 
-		//println(fmt.Sprintf("time: %s, consumption: %.2f, production %.2f, soc: %.2f, net: %.2f, discharged: %.2f, charged: %.2f", forecast.PeriodEnd, dayConsumptionKwh, dayProductionKwh, storageSOC, netKwh, dayDischargeKwh, dayChargeKwh))
+		//println(fmt.Sprintf("time: %s, consumption: %.2f, production %.2f, soc: %.2f, net: %.2f, discharged: %.2f, charged: %.2f", forecast.PeriodEnd.Local(), dayConsumptionKwh, dayProductionKwh, storageSOC, netKwh, dayDischargeKwh, dayChargeKwh))
 	}
 
 	recommendedChargeTarget := 100.0

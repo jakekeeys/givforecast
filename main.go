@@ -14,7 +14,8 @@ func main() {
 	p := forecaster.New(sc)
 	s := api.NewServer(p)
 
-	r.GET("/project", s.Project)
+	r.GET("/forecastday", s.ForecastDay)
+	r.GET("/forecastnow", s.ForecastNow)
 	r.GET("/config", s.Config)
 
 	err := r.Run(":8080")

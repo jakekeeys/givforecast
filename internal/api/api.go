@@ -17,10 +17,20 @@ func NewServer(f *forecaster.Forecaster) *Server {
 	return &Server{f: f}
 }
 
-func (s *Server) Project(c *gin.Context) {
+func (s *Server) ForecastNow(c *gin.Context) {
+	fn, err := s.f.ForecastNow()
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
+
+	c.JSON(http.StatusOK, fn)
+}
+
+func (s *Server) ForecastDay(c *gin.Context) {
 	ds := c.Query("date")
 	if ds == "" {
-		ds = time.Now().Format(dateFormat)
+		ds = time.Now().Local().Format(dateFormat)
 	}
 
 	d, err := time.Parse(dateFormat, ds)
@@ -29,7 +39,7 @@ func (s *Server) Project(c *gin.Context) {
 		return
 	}
 
-	today := time.Now().Truncate(time.Hour * 24)
+	today := time.Now().Local().Truncate(time.Hour * 24)
 	if d.Before(today) {
 		c.String(http.StatusBadRequest, "date must be today or < 7 days in the future")
 		return
@@ -40,19 +50,17 @@ func (s *Server) Project(c *gin.Context) {
 		return
 	}
 
-	projection, err := s.f.ForecastDay(d)
+	fc, err := s.f.ForecastDay(d)
 	if err != nil {
 		_ = c.Error(err)
 		return
 	}
 
-	c.JSON(http.StatusOK, projection)
-	return
+	c.JSON(http.StatusOK, fc)
 }
 
 func (s *Server) Config(c *gin.Context) {
 	config := s.f.GetConfig()
 
 	c.JSON(http.StatusOK, config)
-	return
 }
