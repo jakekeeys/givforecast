@@ -6,15 +6,16 @@ import (
 	"ge-charge-optimiser/internal/givtcp"
 	"ge-charge-optimiser/internal/solcast"
 	"github.com/gin-gonic/gin"
+	"os"
 )
 
 func main() {
 	r := gin.Default()
 
-	sc := solcast.NewClient()
+	sc := solcast.NewClient(os.Getenv("SOLCAST_API_KEY"), os.Getenv("SOLCAST_RESOURCE_ID"))
 	p := forecaster.New(sc)
-	gtcp := givtcp.NewClient()
-	s := api.NewServer(p, gtcp)
+	gtcpc := givtcp.NewClient()
+	s := api.NewServer(p, sc, gtcpc)
 
 	r.GET("/forecast", s.Forecast)
 	r.GET("/forecast/now", s.ForecastNow)

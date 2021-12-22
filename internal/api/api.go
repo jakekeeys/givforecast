@@ -3,6 +3,7 @@ package api
 import (
 	"ge-charge-optimiser/internal/forecaster"
 	"ge-charge-optimiser/internal/givtcp"
+	"ge-charge-optimiser/internal/solcast"
 	"github.com/gin-gonic/gin"
 	"net/http"
 	"time"
@@ -11,14 +12,16 @@ import (
 const dateFormat = "2006-01-02"
 
 type Server struct {
-	f    *forecaster.Forecaster
-	gtcp *givtcp.Client
+	f     *forecaster.Forecaster
+	sc    *solcast.Client
+	gtcpc *givtcp.Client
 }
 
-func NewServer(f *forecaster.Forecaster, gtcp *givtcp.Client) *Server {
+func NewServer(f *forecaster.Forecaster, sc *solcast.Client, gtcpc *givtcp.Client) *Server {
 	return &Server{
-		f:    f,
-		gtcp: gtcp,
+		f:     f,
+		sc:    sc,
+		gtcpc: gtcpc,
 	}
 }
 
@@ -39,7 +42,7 @@ func (s *Server) UpdateChargeTarget(c *gin.Context) {
 		return
 	}
 
-	err = s.gtcp.SetChargeTarget(int(forecast.RecommendedChargeTarget))
+	err = s.gtcpc.SetChargeTarget(int(forecast.RecommendedChargeTarget))
 	if err != nil {
 		_ = c.Error(err)
 		return
