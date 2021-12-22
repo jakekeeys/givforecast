@@ -41,6 +41,14 @@ type Forecast struct {
 	Period       string    `json:"period"`
 }
 
+func (c *Client) SetForecast(fcd ForecastData) error {
+	c.m.Lock()
+	defer c.m.Unlock()
+
+	c.data = &fcd
+	return nil
+}
+
 func (c *Client) UpdateForecast() error {
 	c.m.Lock()
 	defer c.m.Unlock()

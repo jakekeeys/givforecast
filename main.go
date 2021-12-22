@@ -22,6 +22,7 @@ func main() {
 	r.GET("/forecast/config", s.Config)
 	r.GET("/updatechargetarget", s.UpdateChargeTarget)
 	r.GET("/updateforecastdata", s.UpdateForecastData)
+	r.POST("/setforecastdata", s.SetForecastData)
 
 	err := r.Run(":8080")
 	if err != nil {

@@ -25,10 +25,27 @@ func NewServer(f *forecaster.Forecaster, sc *solcast.Client, gtcpc *givtcp.Clien
 	}
 }
 
+func (s *Server) SetForecastData(c *gin.Context) {
+	var data solcast.ForecastData
+	err := c.ShouldBindJSON(&data)
+	if err != nil {
+		c.String(http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	err = s.sc.SetForecast(data)
+	if err != nil {
+		c.String(http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	return
+}
+
 func (s *Server) UpdateForecastData(c *gin.Context) {
 	err := s.sc.UpdateForecast()
 	if err != nil {
-		_ = c.Error(err)
+		c.String(http.StatusInternalServerError, err.Error())
 		return
 	}
 
@@ -54,7 +71,7 @@ func (s *Server) UpdateChargeTarget(c *gin.Context) {
 
 	err = s.gtcpc.SetChargeTarget(int(forecast.RecommendedChargeTarget))
 	if err != nil {
-		_ = c.Error(err)
+		c.String(http.StatusInternalServerError, err.Error())
 		return
 	}
 }
@@ -62,7 +79,7 @@ func (s *Server) UpdateChargeTarget(c *gin.Context) {
 func (s *Server) ForecastNow(c *gin.Context) {
 	fn, err := s.f.ForecastNow()
 	if err != nil {
-		_ = c.Error(err)
+		c.String(http.StatusInternalServerError, err.Error())
 		return
 	}
 
@@ -94,7 +111,7 @@ func (s *Server) Forecast(c *gin.Context) {
 
 	fc, err := s.f.Forecast(d)
 	if err != nil {
-		_ = c.Error(err)
+		c.String(http.StatusInternalServerError, err.Error())
 		return
 	}
 
