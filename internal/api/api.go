@@ -2,6 +2,7 @@ package api
 
 import (
 	"ge-charge-optimiser/internal/forecaster"
+	"ge-charge-optimiser/internal/givtcp"
 	"github.com/gin-gonic/gin"
 	"net/http"
 	"time"
@@ -10,11 +11,39 @@ import (
 const dateFormat = "2006-01-02"
 
 type Server struct {
-	f *forecaster.Forecaster
+	f    *forecaster.Forecaster
+	gtcp *givtcp.Client
 }
 
-func NewServer(f *forecaster.Forecaster) *Server {
-	return &Server{f: f}
+func NewServer(f *forecaster.Forecaster, gtcp *givtcp.Client) *Server {
+	return &Server{
+		f:    f,
+		gtcp: gtcp,
+	}
+}
+
+func (s *Server) UpdateChargeTarget(c *gin.Context) {
+	config := s.f.GetConfig()
+
+	now := time.Now().Local()
+	var forecastDate time.Time
+	if now.Hour() < config.GridPeakStartH && now.Minute() < config.GridPeakStartH {
+		forecastDate = now.Truncate(time.Hour * 24)
+	} else {
+		forecastDate = now.Truncate(time.Hour*24).AddDate(0, 0, 1)
+	}
+
+	forecast, err := s.f.Forecast(forecastDate)
+	if err != nil {
+		c.String(http.StatusInternalServerError, "error getting forecast")
+		return
+	}
+
+	err = s.gtcp.SetChargeTarget(int(forecast.RecommendedChargeTarget))
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
 }
 
 func (s *Server) ForecastNow(c *gin.Context) {
@@ -27,7 +56,7 @@ func (s *Server) ForecastNow(c *gin.Context) {
 	c.JSON(http.StatusOK, fn)
 }
 
-func (s *Server) ForecastDay(c *gin.Context) {
+func (s *Server) Forecast(c *gin.Context) {
 	ds := c.Query("date")
 	if ds == "" {
 		ds = time.Now().Local().Format(dateFormat)
@@ -50,7 +79,7 @@ func (s *Server) ForecastDay(c *gin.Context) {
 		return
 	}
 
-	fc, err := s.f.ForecastDay(d)
+	fc, err := s.f.Forecast(d)
 	if err != nil {
 		_ = c.Error(err)
 		return

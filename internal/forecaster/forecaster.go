@@ -75,7 +75,7 @@ func (f *Forecaster) GetConfig() *Config {
 }
 
 func (f *Forecaster) ForecastNow() (*Forecast, error) {
-	fc, err := f.ForecastDay(time.Now().Local())
+	fc, err := f.Forecast(time.Now().Local())
 	if err != nil {
 		return nil, err
 	}
@@ -115,7 +115,7 @@ func (f *Forecaster) ForecastNow() (*Forecast, error) {
 	return nil, errors.New("unable find matching forecast")
 }
 
-func (f *Forecaster) ForecastDay(t time.Time) (*ForecastDay, error) {
+func (f *Forecaster) Forecast(t time.Time) (*ForecastDay, error) {
 	forecast, err := f.sc.GetForecast()
 	if err != nil {
 		return nil, err

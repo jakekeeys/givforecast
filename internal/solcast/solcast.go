@@ -25,7 +25,7 @@ type Forecast struct {
 	Period       string    `json:"period"`
 }
 
-func (c Client) GetForecast() (*ForecastResponse, error) {
+func (c *Client) GetForecast() (*ForecastResponse, error) {
 	forecastResponse := ForecastResponse{}
 	err := json.NewDecoder(bytes.NewBufferString(sample)).Decode(&forecastResponse)
 	if err != nil {
