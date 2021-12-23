@@ -57,7 +57,7 @@ func (s *Server) UpdateChargeTarget(c *gin.Context) {
 
 	now := time.Now().Local()
 	var forecastDate time.Time
-	if now.Hour() < config.GridPeakStartH && now.Minute() < config.GridPeakStartH {
+	if now.Hour() < config.ACChargeEnd.Hour() && now.Minute() < config.ACChargeEnd.Minute() {
 		forecastDate = now.Truncate(time.Hour * 24)
 	} else {
 		forecastDate = now.Truncate(time.Hour*24).AddDate(0, 0, 1)
