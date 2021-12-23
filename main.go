@@ -20,9 +20,9 @@ func main() {
 	r.GET("/forecast", s.Forecast)
 	r.GET("/forecast/now", s.ForecastNow)
 	r.GET("/forecast/config", s.Config)
-	r.GET("/updatechargetarget", s.UpdateChargeTarget)
-	r.GET("/updateforecastdata", s.UpdateForecastData)
-	r.POST("/setforecastdata", s.SetForecastData)
+	r.POST("/givtcp/chargetarget/update", s.UpdateChargeTarget)
+	r.GET("/soclast/forecast/update", s.UpdateForecastData)
+	r.POST("/solcast/forecast/set", s.SetForecastData)
 
 	err := r.Run(":8080")
 	if err != nil {
