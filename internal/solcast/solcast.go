@@ -53,7 +53,7 @@ func (c *Client) UpdateForecast() error {
 	c.m.Lock()
 	defer c.m.Unlock()
 
-	get, err := c.c.Get(fmt.Sprintf("%s/%s/forecasts?format=json", c.baseURL, c.resourceID))
+	get, err := c.c.Get(fmt.Sprintf("%s/%s/forecasts?format=json&api_key=%s", c.baseURL, c.resourceID, c.apiKey))
 	if err != nil {
 		return err
 	}
@@ -63,13 +63,13 @@ func (c *Client) UpdateForecast() error {
 		return err
 	}
 
-	var forecastResponse *ForecastData
-	err = json.NewDecoder(bytes.NewReader(body)).Decode(forecastResponse)
+	var forecastResponse ForecastData
+	err = json.NewDecoder(bytes.NewReader(body)).Decode(&forecastResponse)
 	if err != nil {
 		return err
 	}
 
-	c.data = forecastResponse
+	c.data = &forecastResponse
 	return nil
 }
 
