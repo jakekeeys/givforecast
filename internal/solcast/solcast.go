@@ -3,6 +3,7 @@ package solcast
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -75,10 +76,12 @@ func (c *Client) UpdateForecast() error {
 
 func (c *Client) GetForecast() (*ForecastData, error) {
 	if c.data == nil {
-		err := c.UpdateForecast()
-		if err != nil {
-			return nil, err
-		}
+		//err := c.UpdateForecast()
+		//if err != nil {
+		//	return nil, err
+		//}
+
+		return nil, errors.New("no data")
 	}
 
 	c.m.RLock()
