@@ -9,7 +9,6 @@ import (
 )
 
 type Config struct {
-	BaseConsumptionKwh float64
 	StorageCapacityKwh float64
 	InverterEfficiency float64
 	ACChargeStart      time.Time
@@ -38,7 +37,6 @@ func New(sc *solcast.Client, gec *givenergy.Client, opts ...Option) *Forecaster 
 		sc:  sc,
 		gec: gec,
 		config: &Config{
-			BaseConsumptionKwh: 1.1,
 			StorageCapacityKwh: 16.38,
 			InverterEfficiency: 0.965,
 			ACChargeStart:      acChargestart,
@@ -127,6 +125,11 @@ func (f *Forecaster) Forecast(t time.Time) (*ForecastDay, error) {
 		return nil, err
 	}
 
+	consumptionAverages, err := f.gec.GetConsumptionAverages()
+	if err != nil {
+		return nil, err
+	}
+
 	t = t.Truncate(time.Hour * 24)
 	var dayProductionKwh, dayConsumptionKwh, dayMaxSOC, dayDischargeKwh, dayChargeKwh float64
 	var forecasts []*Forecast
@@ -143,7 +146,7 @@ func (f *Forecaster) Forecast(t time.Time) (*ForecastDay, error) {
 			continue
 		}
 
-		consumptionKwh := f.config.BaseConsumptionKwh * 0.5
+		consumptionKwh := (consumptionAverages[time.Date(0, 0, 0, forecast.PeriodEnd.Hour(), 0, 0, 0, time.Local)] / 1000) * 0.5
 		dayConsumptionKwh = dayConsumptionKwh + consumptionKwh
 
 		productionKwh := forecast.PvEstimate * 0.5
@@ -162,6 +165,9 @@ func (f *Forecaster) Forecast(t time.Time) (*ForecastDay, error) {
 		storageSOC := (((f.config.StorageCapacityKwh - dayDischargeKwh) + dayChargeKwh) / f.config.StorageCapacityKwh) * 100
 		if storageSOC > dayMaxSOC {
 			dayMaxSOC = storageSOC
+		}
+		if storageSOC < 0 {
+			storageSOC = 0
 		}
 
 		forecasts = append(forecasts, &Forecast{

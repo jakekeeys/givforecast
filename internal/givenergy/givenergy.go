@@ -8,17 +8,23 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/http/cookiejar"
+	"sync"
 	"time"
 )
 
-const dateFormat = "2006-01-02"
+const (
+	reqDateFormat         = "2006-01-02"
+	measurementTimeFormat = "2006-01-02 15:04:05"
+)
 
 type Client struct {
-	c        *http.Client
-	baseURL  string
-	username string
-	password string
-	serial   string
+	c                   *http.Client
+	baseURL             string
+	username            string
+	password            string
+	serial              string
+	consumptionAverages *map[time.Time]float64
+	m                   sync.RWMutex
 }
 
 func NewClient(username, password, serial string) *Client {
@@ -120,8 +126,8 @@ type InverterChartDayLineResponse struct {
 	MaxValueText string `json:"maxValueText"`
 }
 
-func (c *Client) InverterChartDayLine(date time.Time) (*InverterChartDayLineResponse, error) {
-	req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("%s/invChart/dayLine?serialNum=%s&attr=pac&dateText=%s", c.baseURL, c.serial, date.Format(dateFormat)), nil)
+func (c *Client) InverterChartDayLineLoad(date time.Time) (*InverterChartDayLineResponse, error) {
+	req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("%s/invChart/dayLine?serialNum=%s&attr=loadpower&dateText=%s", c.baseURL, c.serial, date.Format(reqDateFormat)), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -137,4 +143,51 @@ func (c *Client) InverterChartDayLine(date time.Time) (*InverterChartDayLineResp
 	}
 
 	return &inverterChartDayLineResponse, nil
+}
+
+func (c *Client) GetConsumptionAverages() (map[time.Time]float64, error) {
+	if c.consumptionAverages == nil {
+		err := c.UpdateConsumptionAverages()
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	c.m.RLock()
+	defer c.m.RUnlock()
+
+	consumptionAverages := *c.consumptionAverages
+	return consumptionAverages, nil
+}
+
+func (c *Client) UpdateConsumptionAverages() error {
+	consumptionAverages := make(map[time.Time]float64)
+
+	now := time.Now().Truncate(time.Hour * 24)
+	for i := -1; i > -8; i-- {
+		measurements, err := c.InverterChartDayLineLoad(now.AddDate(0, 0, i))
+		if err != nil {
+			return err
+		}
+
+		for _, measurement := range measurements.Data {
+			mt, err := time.Parse(measurementTimeFormat, measurement.Time)
+			if err != nil {
+				return err
+			}
+			period := time.Date(0, 0, 0, mt.Hour(), 0, 0, 0, time.Local)
+
+			if v, ok := consumptionAverages[period]; ok {
+				v = (v + measurement.Value) / 2
+			} else {
+				consumptionAverages[period] = measurement.Value
+			}
+		}
+	}
+
+	c.m.Lock()
+	defer c.m.Unlock()
+
+	c.consumptionAverages = &consumptionAverages
+	return nil
 }
