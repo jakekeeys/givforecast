@@ -18,7 +18,7 @@ func main() {
 	gec := givenergy.NewClient(os.Getenv("GIVENERGY_USERNAME"), os.Getenv("GIVENERGY_PASSWORD"), os.Getenv("GIVENERGY_SERIAL"))
 	p := forecaster.New(sc, gec)
 	gtcpc := givtcp.NewClient()
-	s := api.NewServer(p, sc, gtcpc)
+	s := api.NewServer(p, sc, gtcpc, gec)
 
 	r.GET("/forecast", s.Forecast)
 	r.GET("/forecast/now", s.ForecastNow)
@@ -26,6 +26,8 @@ func main() {
 	r.POST("/givtcp/chargetarget/update", s.UpdateChargeTarget)
 	r.POST("/soclast/forecast/update", s.UpdateForecastData)
 	r.POST("/solcast/forecast/set", s.SetForecastData)
+	r.POST("/givenergy/consumptionaverages/update", s.UpdateConsumptionAverages)
+	r.GET("/givenergy/consumptionaverages", s.GetConsumptionAverages)
 
 	err := r.Run(":8080")
 	if err != nil {

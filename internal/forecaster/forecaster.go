@@ -31,8 +31,8 @@ type Forecaster struct {
 }
 
 func New(sc *solcast.Client, gec *givenergy.Client, opts ...Option) *Forecaster {
-	acChargeStart := time.Date(0, 0, 0, 0, 30, 0, 0, time.Local)
-	acChargeEnd := time.Date(0, 0, 0, 7, 30, 0, 0, time.Local)
+	acChargeStart := time.Date(1, 1, 1, 0, 30, 0, 0, time.Local)
+	acChargeEnd := time.Date(1, 1, 1, 7, 30, 0, 0, time.Local)
 
 	projector := &Forecaster{
 		sc:  sc,
@@ -147,7 +147,7 @@ func (f *Forecaster) Forecast(t time.Time) (*ForecastDay, error) {
 			continue
 		}
 
-		consumptionKwh := (consumptionAverages[time.Date(0, 0, 0, forecast.PeriodEnd.Hour(), 0, 0, 0, time.Local)] / 1000) * 0.5
+		consumptionKwh := (consumptionAverages[time.Date(1, 1, 1, forecast.PeriodEnd.Hour(), 0, 0, 0, time.Local)] / 1000) * 0.5
 		dayConsumptionKwh = dayConsumptionKwh + consumptionKwh
 
 		productionKwh := forecast.PvEstimate * 0.5

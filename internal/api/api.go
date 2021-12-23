@@ -4,6 +4,8 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/jakekeeys/givforecast/internal/givenergy"
+
 	"github.com/gin-gonic/gin"
 	"github.com/jakekeeys/givforecast/internal/forecaster"
 	"github.com/jakekeeys/givforecast/internal/givtcp"
@@ -16,13 +18,33 @@ type Server struct {
 	f     *forecaster.Forecaster
 	sc    *solcast.Client
 	gtcpc *givtcp.Client
+	gec   *givenergy.Client
 }
 
-func NewServer(f *forecaster.Forecaster, sc *solcast.Client, gtcpc *givtcp.Client) *Server {
+func NewServer(f *forecaster.Forecaster, sc *solcast.Client, gtcpc *givtcp.Client, gec *givenergy.Client) *Server {
 	return &Server{
 		f:     f,
 		sc:    sc,
 		gtcpc: gtcpc,
+		gec:   gec,
+	}
+}
+
+func (s *Server) GetConsumptionAverages(c *gin.Context) {
+	averages, err := s.gec.GetConsumptionAverages()
+	if err != nil {
+		c.String(http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	c.JSON(http.StatusOK, averages)
+}
+
+func (s *Server) UpdateConsumptionAverages(c *gin.Context) {
+	err := s.gec.UpdateConsumptionAverages()
+	if err != nil {
+		c.String(http.StatusInternalServerError, err.Error())
+		return
 	}
 }
 

@@ -175,7 +175,7 @@ func (c *Client) UpdateConsumptionAverages() error {
 			if err != nil {
 				return err
 			}
-			period := time.Date(0, 0, 0, mt.Hour(), 0, 0, 0, time.Local)
+			period := time.Date(1, 1, 1, mt.Hour(), 0, 0, 0, time.Local)
 
 			if v, ok := consumptionAverages[period]; ok {
 				v = (v + measurement.Value) / 2
