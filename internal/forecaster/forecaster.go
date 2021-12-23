@@ -10,9 +10,9 @@ import (
 type Config struct {
 	BaseConsumptionKwh float64
 	StorageCapacityKwh float64
-	GridPeakStartH     int
-	GridPeakStartM     int
 	InverterEfficiency float64
+	ACChargeStart      time.Time
+	ACChargeEnd        time.Time
 }
 
 func WithConfig(c *Config) Option {
@@ -29,14 +29,17 @@ type Forecaster struct {
 }
 
 func New(sc *solcast.Client, opts ...Option) *Forecaster {
+	acChargestart := time.Date(0, 0, 0, 0, 30, 0, 0, time.Local)
+	acChargeend := time.Date(0, 0, 0, 7, 30, 0, 0, time.Local)
+
 	projector := &Forecaster{
 		sc: sc,
 		config: &Config{
 			BaseConsumptionKwh: 1.1,
 			StorageCapacityKwh: 16.38,
-			GridPeakStartH:     7,
-			GridPeakStartM:     30,
 			InverterEfficiency: 0.965,
+			ACChargeStart:      acChargestart,
+			ACChargeEnd:        acChargeend,
 		},
 	}
 
@@ -81,7 +84,7 @@ func (f *Forecaster) ForecastNow() (*Forecast, error) {
 	}
 
 	now := time.Now().Local()
-	peakStartToday := time.Date(now.Year(), now.Month(), now.Day(), f.config.GridPeakStartH, f.config.GridPeakStartH, 0, 0, time.Local)
+	peakStartToday := time.Date(now.Year(), now.Month(), now.Day(), f.config.ACChargeEnd.Hour(), f.config.ACChargeEnd.Minute(), 0, 0, time.Local)
 	if now.Before(peakStartToday) {
 		return &Forecast{
 			PeriodEnd:      peakStartToday,
@@ -129,11 +132,11 @@ func (f *Forecaster) Forecast(t time.Time) (*ForecastDay, error) {
 			continue
 		}
 
-		if forecast.PeriodEnd.Hour() <= f.config.GridPeakStartH {
+		if forecast.PeriodEnd.Hour() <= f.config.ACChargeEnd.Hour() {
 			continue
 		}
 
-		if forecast.PeriodEnd.Hour() == f.config.GridPeakStartH && forecast.PeriodEnd.Minute() == f.config.GridPeakStartM {
+		if forecast.PeriodEnd.Hour() == f.config.ACChargeEnd.Hour() && forecast.PeriodEnd.Minute() == f.config.ACChargeEnd.Minute() {
 			continue
 		}
 
@@ -149,7 +152,7 @@ func (f *Forecaster) Forecast(t time.Time) (*ForecastDay, error) {
 			dischargeKw = netKwh * ((1 - f.config.InverterEfficiency) + 1)
 			dayDischargeKwh = dayDischargeKwh + dischargeKw
 		} else {
-			chargeKw = (math.Abs(netKwh) * f.config.InverterEfficiency)
+			chargeKw = math.Abs(netKwh) * f.config.InverterEfficiency
 			dayChargeKwh = dayChargeKwh + chargeKw
 		}
 
