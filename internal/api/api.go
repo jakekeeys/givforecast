@@ -1,10 +1,10 @@
 package api
 
 import (
-	"ge-charge-optimiser/internal/forecaster"
-	"ge-charge-optimiser/internal/givtcp"
-	"ge-charge-optimiser/internal/solcast"
 	"github.com/gin-gonic/gin"
+	"givforecast/internal/forecaster"
+	"givforecast/internal/givtcp"
+	"givforecast/internal/solcast"
 	"net/http"
 	"time"
 )

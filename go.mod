@@ -1,4 +1,4 @@
-module ge-charge-optimiser
+module givforecast
 
 go 1.17
 

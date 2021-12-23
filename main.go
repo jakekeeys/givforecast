@@ -1,12 +1,12 @@
 package main
 
 import (
-	"ge-charge-optimiser/internal/api"
-	"ge-charge-optimiser/internal/forecaster"
-	"ge-charge-optimiser/internal/givenergy"
-	"ge-charge-optimiser/internal/givtcp"
-	"ge-charge-optimiser/internal/solcast"
 	"github.com/gin-gonic/gin"
+	"givforecast/internal/api"
+	"givforecast/internal/forecaster"
+	"givforecast/internal/givenergy"
+	"givforecast/internal/givtcp"
+	"givforecast/internal/solcast"
 	"os"
 )
 

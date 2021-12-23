@@ -2,8 +2,8 @@ package forecaster
 
 import (
 	"errors"
-	"ge-charge-optimiser/internal/givenergy"
-	"ge-charge-optimiser/internal/solcast"
+	"givforecast/internal/givenergy"
+	"givforecast/internal/solcast"
 	"math"
 	"time"
 )
