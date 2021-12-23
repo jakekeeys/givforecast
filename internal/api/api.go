@@ -1,12 +1,13 @@
 package api
 
 import (
-	"github.com/gin-gonic/gin"
-	"givforecast/internal/forecaster"
-	"givforecast/internal/givtcp"
-	"givforecast/internal/solcast"
 	"net/http"
 	"time"
+
+	"github.com/gin-gonic/gin"
+	"github.com/jakekeeys/givforecast/internal/forecaster"
+	"github.com/jakekeeys/givforecast/internal/givtcp"
+	"github.com/jakekeeys/givforecast/internal/solcast"
 )
 
 const dateFormat = "2006-01-02"

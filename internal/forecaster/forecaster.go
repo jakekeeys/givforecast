@@ -2,10 +2,11 @@ package forecaster
 
 import (
 	"errors"
-	"givforecast/internal/givenergy"
-	"givforecast/internal/solcast"
 	"math"
 	"time"
+
+	"github.com/jakekeeys/givforecast/internal/givenergy"
+	"github.com/jakekeeys/givforecast/internal/solcast"
 )
 
 type Config struct {

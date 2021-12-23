@@ -1,4 +1,4 @@
-module givforecast
+module github.com/jakekeeys/givforecast
 
 go 1.17
 

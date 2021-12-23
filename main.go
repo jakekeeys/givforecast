@@ -1,13 +1,14 @@
 package main
 
 import (
-	"github.com/gin-gonic/gin"
-	"givforecast/internal/api"
-	"givforecast/internal/forecaster"
-	"givforecast/internal/givenergy"
-	"givforecast/internal/givtcp"
-	"givforecast/internal/solcast"
 	"os"
+
+	"github.com/gin-gonic/gin"
+	"github.com/jakekeeys/givforecast/internal/api"
+	"github.com/jakekeeys/givforecast/internal/forecaster"
+	"github.com/jakekeeys/givforecast/internal/givenergy"
+	"github.com/jakekeeys/givforecast/internal/givtcp"
+	"github.com/jakekeeys/givforecast/internal/solcast"
 )
 
 func main() {
