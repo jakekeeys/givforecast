@@ -36,7 +36,7 @@ func New(sc *solcast.Client, opts ...Option) *Forecaster {
 			StorageCapacityKwh: 16.38,
 			GridPeakStartH:     7,
 			GridPeakStartM:     30,
-			InverterEfficiency: 0.9,
+			InverterEfficiency: 0.965,
 		},
 	}
 
