@@ -2,6 +2,7 @@ package forecaster
 
 import (
 	"errors"
+	"ge-charge-optimiser/internal/givenergy"
 	"ge-charge-optimiser/internal/solcast"
 	"math"
 	"time"
@@ -25,15 +26,17 @@ type Option func(p *Forecaster)
 
 type Forecaster struct {
 	sc     *solcast.Client
+	gec    *givenergy.Client
 	config *Config
 }
 
-func New(sc *solcast.Client, opts ...Option) *Forecaster {
+func New(sc *solcast.Client, gec *givenergy.Client, opts ...Option) *Forecaster {
 	acChargestart := time.Date(0, 0, 0, 0, 30, 0, 0, time.Local)
 	acChargeend := time.Date(0, 0, 0, 7, 30, 0, 0, time.Local)
 
 	projector := &Forecaster{
-		sc: sc,
+		sc:  sc,
+		gec: gec,
 		config: &Config{
 			BaseConsumptionKwh: 1.1,
 			StorageCapacityKwh: 16.38,
@@ -173,8 +176,6 @@ func (f *Forecaster) Forecast(t time.Time) (*ForecastDay, error) {
 			DischargeW:     dischargeKw * 2 * 1000,
 			SOC:            storageSOC,
 		})
-
-		//println(fmt.Sprintf("time: %s, consumption: %.2f, production %.2f, soc: %.2f, net: %.2f, discharged: %.2f, charged: %.2f", forecast.PeriodEnd.Local(), dayConsumptionKwh, dayProductionKwh, storageSOC, netKwh, dayDischargeKwh, dayChargeKwh))
 	}
 
 	recommendedChargeTarget := 100.0

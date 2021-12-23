@@ -3,6 +3,7 @@ package main
 import (
 	"ge-charge-optimiser/internal/api"
 	"ge-charge-optimiser/internal/forecaster"
+	"ge-charge-optimiser/internal/givenergy"
 	"ge-charge-optimiser/internal/givtcp"
 	"ge-charge-optimiser/internal/solcast"
 	"github.com/gin-gonic/gin"
@@ -13,7 +14,8 @@ func main() {
 	r := gin.Default()
 
 	sc := solcast.NewClient(os.Getenv("SOLCAST_API_KEY"), os.Getenv("SOLCAST_RESOURCE_ID"))
-	p := forecaster.New(sc)
+	gec := givenergy.NewClient(os.Getenv("GIVENERGY_USERNAME"), os.Getenv("GIVENERGY_PASSWORD"), os.Getenv("GIVENERGY_SERIAL"))
+	p := forecaster.New(sc, gec)
 	gtcpc := givtcp.NewClient()
 	s := api.NewServer(p, sc, gtcpc)
 
