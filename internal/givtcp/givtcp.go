@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 )
 
@@ -41,13 +40,8 @@ func (c *Client) SetChargeTarget(target int) error {
 		return err
 	}
 
-	body, err = ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return err
-	}
-
 	var setChargeTargetResponse SetChargeTargetResponse
-	err = json.Unmarshal(body, &setChargeTargetResponse)
+	err = json.NewDecoder(resp.Body).Decode(&setChargeTargetResponse)
 	if err != nil {
 		return err
 	}

@@ -1,11 +1,9 @@
 package solcast
 
 import (
-	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"sync"
 	"time"
@@ -22,7 +20,6 @@ type Client struct {
 
 func NewClient(apiKey, resourceID string) *Client {
 	return &Client{
-		m:          sync.RWMutex{},
 		apiKey:     apiKey,
 		baseURL:    "https://api.solcast.com.au/rooftop_sites",
 		resourceID: resourceID,
@@ -59,13 +56,8 @@ func (c *Client) UpdateForecast() error {
 		return err
 	}
 
-	body, err := ioutil.ReadAll(get.Body)
-	if err != nil {
-		return err
-	}
-
 	var forecastResponse ForecastData
-	err = json.NewDecoder(bytes.NewReader(body)).Decode(&forecastResponse)
+	err = json.NewDecoder(get.Body).Decode(&forecastResponse)
 	if err != nil {
 		return err
 	}

@@ -31,8 +31,8 @@ type Forecaster struct {
 }
 
 func New(sc *solcast.Client, gec *givenergy.Client, opts ...Option) *Forecaster {
-	acChargestart := time.Date(0, 0, 0, 0, 30, 0, 0, time.Local)
-	acChargeend := time.Date(0, 0, 0, 7, 30, 0, 0, time.Local)
+	acChargeStart := time.Date(0, 0, 0, 0, 30, 0, 0, time.Local)
+	acChargeEnd := time.Date(0, 0, 0, 7, 30, 0, 0, time.Local)
 
 	projector := &Forecaster{
 		sc:  sc,
@@ -40,8 +40,8 @@ func New(sc *solcast.Client, gec *givenergy.Client, opts ...Option) *Forecaster 
 		config: &Config{
 			StorageCapacityKwh: 16.38,
 			InverterEfficiency: 0.965,
-			ACChargeStart:      acChargestart,
-			ACChargeEnd:        acChargeend,
+			ACChargeStart:      acChargeStart,
+			ACChargeEnd:        acChargeEnd,
 		},
 	}
 
