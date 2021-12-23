@@ -8,6 +8,8 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/http/cookiejar"
+	"strconv"
+	"strings"
 	"sync"
 	"time"
 )
@@ -15,19 +17,21 @@ import (
 const (
 	reqDateFormat         = "2006-01-02"
 	measurementTimeFormat = "2006-01-02 15:04:05"
+	geCloudBaseURL        = "https://www.givenergy.cloud/GivManage/api"
+	geBatteryBaseURL      = "https://api.givenergy.cloud"
 )
 
 type Client struct {
 	c                   *http.Client
-	baseURL             string
 	username            string
 	password            string
 	serial              string
+	apiKey              string
 	consumptionAverages *map[time.Time]float64
 	m                   sync.RWMutex
 }
 
-func NewClient(username, password, serial string) *Client {
+func NewClient(username, password, serial, apiKey string) *Client {
 	jar, err := cookiejar.New(nil)
 	if err != nil {
 		panic(err)
@@ -38,10 +42,10 @@ func NewClient(username, password, serial string) *Client {
 
 	return &Client{
 		c:        &client,
-		baseURL:  "https://www.givenergy.cloud/GivManage/api",
 		username: username,
 		password: password,
 		serial:   serial,
+		apiKey:   apiKey,
 	}
 }
 
@@ -54,7 +58,7 @@ func (c *Client) Login() error {
 		} `json:"inverters"`
 	}
 
-	post, err := c.c.Post(fmt.Sprintf("%s/login?account=%s&password=%s", c.baseURL, c.username, c.password), "application/json", nil)
+	post, err := c.c.Post(fmt.Sprintf("%s/login?account=%s&password=%s", geCloudBaseURL, c.username, c.password), "application/json", nil)
 	if err != nil {
 		return err
 	}
@@ -78,32 +82,62 @@ type GivEnergyResponse struct {
 }
 
 func (c *Client) doRequest(r *http.Request, retry bool) (*http.Response, error) {
+	if strings.HasPrefix(r.URL.String(), geBatteryBaseURL) {
+		r.Header.Add("Authorization", c.apiKey)
+		r.Header.Add("Content-Type", "application/json")
+	}
+
 	resp, err := c.c.Do(r)
 	if err != nil {
 		return nil, err
 	}
 
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return nil, err
-	}
-	resp.Body = ioutil.NopCloser(bytes.NewBuffer(body))
-
-	var givEnergyResponse GivEnergyResponse
-	err = json.NewDecoder(bytes.NewBuffer(body)).Decode(&givEnergyResponse)
-	if err != nil {
-		return nil, err
-	}
-
-	if givEnergyResponse.MsgCode == 102 && !retry {
-		err := c.Login()
+	if strings.HasPrefix(r.URL.String(), geCloudBaseURL) {
+		body, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
 			return nil, err
 		}
-		return c.doRequest(r, true)
+		resp.Body = ioutil.NopCloser(bytes.NewBuffer(body))
+
+		var givEnergyResponse GivEnergyResponse
+		err = json.NewDecoder(bytes.NewBuffer(body)).Decode(&givEnergyResponse)
+		if err != nil {
+			return nil, err
+		}
+
+		if givEnergyResponse.MsgCode == 102 && !retry {
+			err := c.Login()
+			if err != nil {
+				return nil, err
+			}
+			return c.doRequest(r, true)
+		}
 	}
 
 	return resp, nil
+}
+
+func (c *Client) SetChargeTarget(target int) error {
+	type SetChargeTargetRequest struct {
+		Value string `json:"value"`
+	}
+
+	bodyBytes, err := json.Marshal(&SetChargeTargetRequest{Value: strconv.Itoa(target)})
+	if err != nil {
+		return err
+	}
+
+	request, err := http.NewRequest(http.MethodPost, fmt.Sprintf("%s/registers/chargeUpTo", geBatteryBaseURL), bytes.NewBuffer(bodyBytes))
+	if err != nil {
+		return err
+	}
+
+	resp, err := c.doRequest(request, false)
+	if resp.StatusCode != http.StatusOK {
+		return errors.New("error setting charge target")
+	}
+
+	return nil
 }
 
 type InverterChartDayLineResponse struct {
@@ -127,7 +161,7 @@ type InverterChartDayLineResponse struct {
 }
 
 func (c *Client) InverterChartDayLineLoad(date time.Time) (*InverterChartDayLineResponse, error) {
-	req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("%s/invChart/dayLine?serialNum=%s&attr=loadpower&dateText=%s", c.baseURL, c.serial, date.Format(reqDateFormat)), nil)
+	req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("%s/invChart/dayLine?serialNum=%s&attr=loadpower&dateText=%s", geCloudBaseURL, c.serial, date.Format(reqDateFormat)), nil)
 	if err != nil {
 		return nil, err
 	}
