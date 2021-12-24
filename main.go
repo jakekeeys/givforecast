@@ -69,7 +69,7 @@ func main() {
 			return
 		}
 	})
-	//gocron.Start()
+	gocron.Start() // todo make config
 
 	err := r.Run(":8080")
 	if err != nil {
