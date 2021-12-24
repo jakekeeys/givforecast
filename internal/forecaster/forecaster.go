@@ -14,6 +14,7 @@ type Config struct {
 	InverterEfficiency float64
 	ACChargeStart      time.Time
 	ACChargeEnd        time.Time
+	BatteryReserve     float64
 }
 
 func WithConfig(c *Config) Option {
@@ -42,6 +43,7 @@ func New(sc *solcast.Client, gec *givenergy.Client, opts ...Option) *Forecaster 
 			InverterEfficiency: 0.965,
 			ACChargeStart:      acChargeStart,
 			ACChargeEnd:        acChargeEnd,
+			BatteryReserve:     4.0,
 		},
 	}
 
@@ -187,9 +189,6 @@ func (f *Forecaster) Forecast(t time.Time) (*ForecastDay, error) {
 		if storageSOC > dayMaxSOC {
 			dayMaxSOC = storageSOC
 		}
-		if storageSOC < 0 {
-			storageSOC = 0 // todo should be configured reserve
-		}
 
 		forecasts = append(forecasts, &Forecast{
 			PeriodEnd:      forecast.PeriodEnd.Local(),
@@ -212,6 +211,15 @@ func (f *Forecaster) Forecast(t time.Time) (*ForecastDay, error) {
 
 	for _, projection := range forecasts {
 		projection.SOC = projection.SOC - 100 + recommendedChargeTarget
+		// if the battery is empty unwind discharge and soc changes
+		// this will slightly underestimate the dischargeKwh as it would have emptied mid-period
+		if projection.SOC <= f.config.BatteryReserve {
+			projection.SOC = f.config.BatteryReserve
+			dischargeKwh := projection.DischargeKwh - ((projection.DischargeW / 1000) / 2)
+			dayDischargeKwh = dayDischargeKwh - dischargeKwh
+			projection.DischargeKwh = dischargeKwh
+			projection.DischargeW = 0
+		}
 	}
 
 	return &ForecastDay{

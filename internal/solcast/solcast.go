@@ -69,6 +69,7 @@ func (c *Client) UpdateForecast() error {
 
 func (c *Client) GetForecast() (*ForecastData, error) {
 	if c.data == nil {
+		// probably don't want to let this auto fetch as we're limited to 10 requests a day
 		//err := c.UpdateForecast()
 		//if err != nil {
 		//	return nil, err
