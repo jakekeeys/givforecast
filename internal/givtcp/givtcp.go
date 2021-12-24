@@ -47,7 +47,7 @@ func (c *Client) SetChargeTarget(target int) error {
 	}
 
 	if setChargeTargetResponse.Result != "Setting charge target was a: Success" {
-		return errors.New("error setting charge target")
+		return errors.New("error setting charge target via givtcp")
 	}
 
 	return nil

@@ -118,7 +118,7 @@ func (f *Forecaster) ForecastNow() (*Forecast, error) {
 		}, nil
 	}
 
-	return nil, errors.New("unable find matching forecast")
+	return nil, errors.New("unable find matching forecast for current period")
 }
 
 func (f *Forecaster) Forecast(t time.Time) (*ForecastDay, error) {

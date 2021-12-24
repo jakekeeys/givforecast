@@ -70,7 +70,7 @@ func (c *Client) Login() error {
 	}
 
 	if !loginResponse.Success {
-		return errors.New("error authenticating")
+		return errors.New("error authenticating to ge cloud")
 	}
 
 	return nil
@@ -134,7 +134,7 @@ func (c *Client) SetChargeTarget(target int) error {
 
 	resp, err := c.doRequest(request, false)
 	if resp.StatusCode != http.StatusOK {
-		return errors.New("error setting charge target")
+		return errors.New("error setting charge target via ge battery api")
 	}
 
 	return nil

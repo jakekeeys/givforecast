@@ -74,7 +74,7 @@ func (c *Client) GetForecast() (*ForecastData, error) {
 		//	return nil, err
 		//}
 
-		return nil, errors.New("no data")
+		return nil, errors.New("no solcast forecast data available")
 	}
 
 	c.m.RLock()

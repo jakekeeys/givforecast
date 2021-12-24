@@ -68,7 +68,7 @@ func main() {
 			return
 		}
 	})
-	gocron.Start()
+	//gocron.Start()
 
 	err := r.Run(":8080")
 	if err != nil {
