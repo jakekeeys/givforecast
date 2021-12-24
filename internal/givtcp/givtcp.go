@@ -16,7 +16,7 @@ type Client struct {
 func NewClient() *Client {
 	return &Client{
 		c:       http.DefaultClient,
-		baseURL: "http://givtcp:80",
+		baseURL: "http://givtcp:80", // todo make config
 	}
 }
 

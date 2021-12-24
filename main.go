@@ -36,7 +36,7 @@ func main() {
 	r.POST("/givenergy/consumptionaverages", s.UpdateConsumptionAverages)
 	r.GET("/givenergy/consumptionaverages", s.GetConsumptionAverages)
 
-	gocron.Every(1).Day().At("00:15").Do(func() {
+	gocron.Every(1).Day().At("00:15").Do(func() { // todo make config
 		println("updating solar forecasts")
 		err := sc.UpdateForecast()
 		if err != nil {

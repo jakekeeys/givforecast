@@ -135,6 +135,7 @@ func (s *Server) Forecast(c *gin.Context) {
 	fc, err := s.f.Forecast(d)
 	if err != nil {
 		c.String(http.StatusInternalServerError, err.Error())
+		c.AbortWithError()
 		return
 	}
 
