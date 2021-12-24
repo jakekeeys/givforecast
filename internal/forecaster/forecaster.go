@@ -88,8 +88,9 @@ func (f *Forecaster) ForecastNow() (*Forecast, error) {
 	now := time.Now().Local()
 	peakStartToday := time.Date(now.Year(), now.Month(), now.Day(), f.config.ACChargeEnd.Hour(), f.config.ACChargeEnd.Minute(), 0, 0, time.Local)
 	if now.Before(peakStartToday) {
+		// todo after 0000 next day this is returned
 		return &Forecast{
-			PeriodEnd:      peakStartToday,
+			PeriodEnd:      peakStartToday, // todo plus half an hour maybe or just return the first period for the day
 			ProductionKwh:  0,
 			ConsumptionKwh: 0,
 			ChargeKwh:      0,
@@ -139,9 +140,11 @@ func (f *Forecaster) Forecast(t time.Time) (*ForecastDay, error) {
 			continue
 		}
 
+		// todo not current forecasting from 2330 > 0000 because of this
 		if forecast.PeriodEnd.Hour() <= f.config.ACChargeEnd.Hour() {
 			continue
 		}
+		// todo probably want to return all data outside the charging window
 
 		if forecast.PeriodEnd.Hour() == f.config.ACChargeEnd.Hour() && forecast.PeriodEnd.Minute() == f.config.ACChargeEnd.Minute() {
 			continue
