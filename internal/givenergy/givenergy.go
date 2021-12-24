@@ -207,7 +207,6 @@ func (c *Client) SetConsumptionAverages(consumptionAverages map[time.Time]float6
 	c.consumptionAverages = &nca
 }
 
-// todo half hourly averages in line with solcast periods
 func (c *Client) UpdateConsumptionAverages() error {
 	consumptionAverages := make(map[time.Time]float64)
 
@@ -227,7 +226,13 @@ func (c *Client) UpdateConsumptionAverages() error {
 			if err != nil {
 				return err
 			}
-			period := time.Date(1, 1, 1, mt.Hour(), 0, 0, 0, time.Local)
+
+			var period = time.Time{}
+			if mt.Minute() < 30 {
+				period = time.Date(1, 1, 1, mt.Hour(), 0, 0, 0, time.Local)
+			} else {
+				period = time.Date(1, 1, 1, mt.Hour(), 30, 0, 0, time.Local)
+			}
 
 			if v, ok := consumptionAverages[period]; ok {
 				v = (v + measurement.Value) / 2
