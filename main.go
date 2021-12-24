@@ -58,6 +58,7 @@ func main() {
 
 		t := int(forecast.RecommendedChargeTarget)
 		println(fmt.Sprintf("setting charge target to %d", t))
+		// todo make this an interface supported by either givtcp or gecloud
 		err = gtcpc.SetChargeTarget(t)
 		if err != nil {
 			println(err)
