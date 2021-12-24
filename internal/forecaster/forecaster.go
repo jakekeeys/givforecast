@@ -209,15 +209,14 @@ func (f *Forecaster) Forecast(t time.Time) (*ForecastDay, error) {
 		recommendedChargeTarget = math.Abs((dayMaxSOC - 100) - 100)
 	}
 
-	for _, projection := range forecasts {
+	for i, projection := range forecasts {
 		projection.SOC = projection.SOC - 100 + recommendedChargeTarget
 		// if the battery is empty unwind discharge and soc changes
 		// this will slightly underestimate the dischargeKwh as it would have emptied mid-period
 		if projection.SOC <= f.config.BatteryReserve {
 			projection.SOC = f.config.BatteryReserve
-			dischargeKwh := projection.DischargeKwh - ((projection.DischargeW / 1000) / 2)
-			dayDischargeKwh = dayDischargeKwh - dischargeKwh
-			projection.DischargeKwh = dischargeKwh
+			dayDischargeKwh = forecasts[i-1].DischargeKwh
+			projection.DischargeKwh = forecasts[i-1].DischargeKwh
 			projection.DischargeW = 0
 		}
 	}
