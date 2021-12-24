@@ -47,6 +47,7 @@ func (c *Client) SetForecast(fcd ForecastData) error {
 	return nil
 }
 
+// todo: forcast only returns data from now forward, pull actuals and merge with forcasts to allow updating outside of charging window
 func (c *Client) UpdateForecast() error {
 	c.m.Lock()
 	defer c.m.Unlock()
