@@ -35,6 +35,7 @@ func main() {
 
 	r.POST("/givenergy/consumptionaverages", s.UpdateConsumptionAverages)
 	r.GET("/givenergy/consumptionaverages", s.GetConsumptionAverages)
+	r.PUT("/givenergy/consumptionaverages", s.SetConsumptionAverages)
 
 	gocron.Every(1).Day().At("00:15").Do(func() { // todo make config
 		println("updating solar forecasts")

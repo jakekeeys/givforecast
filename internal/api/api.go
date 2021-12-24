@@ -30,6 +30,18 @@ func NewServer(f *forecaster.Forecaster, sc *solcast.Client, gtcpc *givtcp.Clien
 	}
 }
 
+func (s *Server) SetConsumptionAverages(c *gin.Context) {
+	var data map[time.Time]float64
+	err := c.ShouldBindJSON(&data)
+	if err != nil {
+		c.String(http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	s.gec.SetConsumptionAverages(data)
+	return
+}
+
 func (s *Server) GetConsumptionAverages(c *gin.Context) {
 	averages, err := s.gec.GetConsumptionAverages()
 	if err != nil {
@@ -135,7 +147,6 @@ func (s *Server) Forecast(c *gin.Context) {
 	fc, err := s.f.Forecast(d)
 	if err != nil {
 		c.String(http.StatusInternalServerError, err.Error())
-		c.AbortWithError()
 		return
 	}
 
