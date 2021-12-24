@@ -38,7 +38,7 @@ func New(sc *solcast.Client, gec *givenergy.Client, opts ...Option) *Forecaster 
 		sc:  sc,
 		gec: gec,
 		config: &Config{
-			StorageCapacityKwh: 16.38,
+			StorageCapacityKwh: 16.38, // todo consume from ge cloud
 			InverterEfficiency: 0.965,
 			ACChargeStart:      acChargeStart,
 			ACChargeEnd:        acChargeEnd,
