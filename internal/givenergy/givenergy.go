@@ -205,6 +205,10 @@ func (c *Client) UpdateConsumptionAverages() error {
 		}
 
 		for _, measurement := range measurements.Data {
+			if measurement.Value <= 0 {
+				continue
+			}
+
 			mt, err := time.Parse(measurementTimeFormat, measurement.Time)
 			if err != nil {
 				return err
