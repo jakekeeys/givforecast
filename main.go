@@ -27,10 +27,13 @@ func main() {
 	r.GET("/forecast", s.Forecast)
 	r.GET("/forecast/now", s.ForecastNow)
 	r.GET("/forecast/config", s.Config)
-	r.POST("/givtcp/chargetarget/update", s.UpdateChargeTarget)
-	r.POST("/soclast/forecast/update", s.UpdateForecastData)
-	r.POST("/solcast/forecast/set", s.SetForecastData)
-	r.POST("/givenergy/consumptionaverages/update", s.UpdateConsumptionAverages)
+
+	r.POST("/givtcp/chargetarget", s.UpdateChargeTarget)
+
+	r.POST("/soclast/forecast", s.UpdateForecastData)
+	r.PUT("/solcast/forecast", s.SetForecastData)
+
+	r.POST("/givenergy/consumptionaverages", s.UpdateConsumptionAverages)
 	r.GET("/givenergy/consumptionaverages", s.GetConsumptionAverages)
 
 	gocron.Every(1).Day().At("00:15").Do(func() {
