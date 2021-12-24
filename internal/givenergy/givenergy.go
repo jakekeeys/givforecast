@@ -211,7 +211,7 @@ func (c *Client) UpdateConsumptionAverages() error {
 	consumptionAverages := make(map[time.Time]float64)
 
 	now := time.Now().Truncate(time.Hour * 24)
-	for i := -1; i > -8; i-- {
+	for i := -1; i > -8; i-- { // todo make amount of days config
 		measurements, err := c.InverterChartDayLineLoad(now.AddDate(0, 0, i))
 		if err != nil {
 			return err
