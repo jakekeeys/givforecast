@@ -194,6 +194,7 @@ func (c *Client) GetConsumptionAverages() (map[time.Time]float64, error) {
 	return consumptionAverages, nil
 }
 
+// todo half hourly averages in line with solcast periods
 func (c *Client) UpdateConsumptionAverages() error {
 	consumptionAverages := make(map[time.Time]float64)
 
