@@ -37,6 +37,8 @@ func main() {
 	r.GET("/givenergy/consumptionaverages", s.GetConsumptionAverages)
 	r.PUT("/givenergy/consumptionaverages", s.SetConsumptionAverages)
 
+	// todo post actual measurements production measurement from ge to solcast
+
 	gocron.Every(1).Day().At("00:15").Do(func() { // todo make config
 		println("updating solar forecasts")
 		err := sc.UpdateForecast()

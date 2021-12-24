@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"sort"
 	"sync"
 	"time"
 )
@@ -43,14 +44,18 @@ func (c *Client) SetForecast(fcd ForecastData) error {
 	c.m.Lock()
 	defer c.m.Unlock()
 
+	sort.Slice(fcd.Forecasts, func(i, j int) bool {
+		return fcd.Forecasts[i].PeriodEnd.Before(fcd.Forecasts[j].PeriodEnd)
+	})
+
 	c.data = &fcd
 	return nil
 }
 
-// todo: forcast only returns data from now forward, pull actuals and merge with forcasts to allow updating outside of charging window
 func (c *Client) UpdateForecast() error {
 	c.m.Lock()
 	defer c.m.Unlock()
+	fcd := ForecastData{Forecasts: []Forecast{}}
 
 	get, err := c.c.Get(fmt.Sprintf("%s/%s/forecasts?format=json&api_key=%s", c.baseURL, c.resourceID, c.apiKey))
 	if err != nil {
@@ -62,8 +67,26 @@ func (c *Client) UpdateForecast() error {
 	if err != nil {
 		return err
 	}
+	fcd.Forecasts = append(fcd.Forecasts, forecastResponse.Forecasts...)
 
-	c.data = &forecastResponse
+	get, err = c.c.Get(fmt.Sprintf("%s/%s/estimated_actuals?format=json&api_key=%s", c.baseURL, c.resourceID, c.apiKey))
+	if err != nil {
+		return err
+	}
+
+	var actualsResponse ForecastData
+	err = json.NewDecoder(get.Body).Decode(&actualsResponse)
+	if err != nil {
+		return err
+	}
+
+	fcd.Forecasts = append(fcd.Forecasts, actualsResponse.Forecasts...)
+
+	sort.Slice(fcd.Forecasts, func(i, j int) bool {
+		return fcd.Forecasts[i].PeriodEnd.Before(fcd.Forecasts[j].PeriodEnd)
+	})
+
+	c.data = &fcd
 	return nil
 }
 
