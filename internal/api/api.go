@@ -12,7 +12,10 @@ import (
 	"github.com/jakekeeys/givforecast/internal/solcast"
 )
 
-const dateFormat = "2006-01-02"
+const (
+	dateFormat = "2006-01-02"
+	timeFormat = "2006-01-02T15:04"
+)
 
 type Server struct {
 	f     *forecaster.Forecaster
@@ -112,7 +115,19 @@ func (s *Server) UpdateChargeTarget(c *gin.Context) {
 }
 
 func (s *Server) ForecastNow(c *gin.Context) {
-	fn, err := s.f.ForecastNow()
+	t := time.Now().Local()
+
+	ts := c.Query("time")
+	if ts != "" {
+		pt, err := time.ParseInLocation(timeFormat, ts, time.Local)
+		if err != nil {
+			c.String(http.StatusBadRequest, err.Error())
+			return
+		}
+		t = pt
+	}
+
+	fn, err := s.f.ForecastNow(t)
 	if err != nil {
 		c.String(http.StatusInternalServerError, err.Error())
 		return

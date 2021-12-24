@@ -195,10 +195,16 @@ func (c *Client) GetConsumptionAverages() (map[time.Time]float64, error) {
 }
 
 func (c *Client) SetConsumptionAverages(consumptionAverages map[time.Time]float64) {
+	// normalise time keys
+	nca := map[time.Time]float64{}
+	for k, v := range consumptionAverages {
+		nca[time.Date(1, 1, 1, k.Hour(), k.Minute(), 0, 0, time.Local)] = v
+	}
+
 	c.m.Lock()
 	defer c.m.Unlock()
 
-	*c.consumptionAverages = consumptionAverages
+	c.consumptionAverages = &nca
 }
 
 // todo half hourly averages in line with solcast periods

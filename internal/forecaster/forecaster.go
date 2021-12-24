@@ -79,28 +79,42 @@ func (f *Forecaster) GetConfig() *Config {
 	return f.config
 }
 
-func (f *Forecaster) ForecastNow() (*Forecast, error) {
-	fc, err := f.Forecast(time.Now().Local())
+func (f *Forecaster) ForecastNow(t time.Time) (*Forecast, error) {
+	chargingPeriodStart := time.Date(t.Year(), t.Month(), t.Day(), f.config.ACChargeStart.Hour(), f.config.ACChargeStart.Minute(), 0, 0, time.Local)
+	chargingPeriodEnd := time.Date(t.Year(), t.Month(), t.Day(), f.config.ACChargeEnd.Hour(), f.config.ACChargeEnd.Minute(), 0, 0, time.Local)
+
+	// if it's after midnight,
+	// and it's before the charging period
+	// we actually want yesterday's forecast
+	// this again assumes the charging period occurs during the early hours of the morning
+	ft := t
+	if t.Hour() >= 0 && t.Before(chargingPeriodStart) {
+		ft = ft.AddDate(0, 0, -1)
+	}
+
+	fc, err := f.Forecast(ft)
 	if err != nil {
 		return nil, err
 	}
 
-	now := time.Now().Local()
-	peakStartToday := time.Date(now.Year(), now.Month(), now.Day(), f.config.ACChargeEnd.Hour(), f.config.ACChargeEnd.Minute(), 0, 0, time.Local)
-	if now.Before(peakStartToday) {
-		// todo after 0000 next day this is returned
+	// if we're within the charging period
+	if t.After(chargingPeriodStart) && t.Before(chargingPeriodEnd) {
 		return &Forecast{
-			PeriodEnd:      peakStartToday, // todo plus half an hour maybe or just return the first period for the day
+			PeriodEnd:      chargingPeriodEnd,
 			ProductionKwh:  0,
 			ConsumptionKwh: 0,
 			ChargeKwh:      0,
 			DischargeKwh:   0,
+			ProductionW:    0,
+			ConsumptionW:   0,
+			ChargeW:        0,
+			DischargeW:     0,
 			SOC:            fc.RecommendedChargeTarget,
 		}, nil
 	}
 
 	for _, forecast := range fc.Forecasts {
-		if forecast.PeriodEnd.Before(now) {
+		if forecast.PeriodEnd.Before(t) {
 			continue
 		}
 
@@ -133,20 +147,17 @@ func (f *Forecaster) Forecast(t time.Time) (*ForecastDay, error) {
 	}
 
 	t = t.Truncate(time.Hour * 24)
+	dischargingPeriodStart := time.Date(t.Year(), t.Month(), t.Day(), f.config.ACChargeEnd.Hour(), f.config.ACChargeEnd.Minute(), 0, 0, time.Local)
+	// This will only work if the charging period starts after midnight as we're assuming this and setting the date to tomorrow
+	dischargingPeriodEnd := time.Date(t.Year(), t.Month(), t.Day()+1, f.config.ACChargeStart.Hour(), f.config.ACChargeStart.Minute(), 0, 0, time.Local)
 	var dayProductionKwh, dayConsumptionKwh, dayMaxSOC, dayDischargeKwh, dayChargeKwh float64
 	var forecasts []*Forecast
 	for _, forecast := range forecast.Forecasts {
-		if forecast.PeriodEnd.After(t.AddDate(0, 0, 1)) || forecast.PeriodEnd.Before(t) {
+		if forecast.PeriodEnd.After(dischargingPeriodEnd) {
 			continue
 		}
 
-		// todo not current forecasting from 2330 > 0000 because of this
-		if forecast.PeriodEnd.Hour() <= f.config.ACChargeEnd.Hour() {
-			continue
-		}
-		// todo probably want to return all data outside the charging window
-
-		if forecast.PeriodEnd.Hour() == f.config.ACChargeEnd.Hour() && forecast.PeriodEnd.Minute() == f.config.ACChargeEnd.Minute() {
+		if forecast.PeriodEnd.Before(dischargingPeriodStart) || forecast.PeriodEnd.Equal(dischargingPeriodStart) {
 			continue
 		}
 
@@ -171,7 +182,7 @@ func (f *Forecaster) Forecast(t time.Time) (*ForecastDay, error) {
 			dayMaxSOC = storageSOC
 		}
 		if storageSOC < 0 {
-			storageSOC = 0
+			storageSOC = 0 // todo should be configured reserve
 		}
 
 		forecasts = append(forecasts, &Forecast{
