@@ -1,6 +1,8 @@
 package api
 
 import (
+	"context"
+	influxdb2 "github.com/influxdata/influxdb-client-go/v2"
 	"net/http"
 	"time"
 
@@ -22,14 +24,16 @@ type Server struct {
 	sc    *solcast.Client
 	gtcpc *givtcp.Client
 	gec   *givenergy.Client
+	ifc   influxdb2.Client
 }
 
-func NewServer(f *forecaster.Forecaster, sc *solcast.Client, gtcpc *givtcp.Client, gec *givenergy.Client) *Server {
+func NewServer(f *forecaster.Forecaster, sc *solcast.Client, gtcpc *givtcp.Client, gec *givenergy.Client, ifc influxdb2.Client) *Server {
 	return &Server{
 		f:     f,
 		sc:    sc,
 		gtcpc: gtcpc,
 		gec:   gec,
+		ifc:   ifc,
 	}
 }
 
@@ -163,6 +167,30 @@ func (s *Server) Forecast(c *gin.Context) {
 	if err != nil {
 		c.String(http.StatusInternalServerError, err.Error())
 		return
+	}
+
+	for _, f := range fc.Forecasts {
+		wapib := s.ifc.WriteAPIBlocking("", "forecasts")
+
+		p := influxdb2.NewPoint(
+			"forecast",
+			map[string]string{},
+			map[string]interface{}{
+				"ProductionKwh":  f.ProductionKwh,
+				"ConsumptionKwh": f.ConsumptionKwh,
+				"ChargeKwh":      f.ChargeKwh,
+				"DischargeKwh":   f.DischargeKwh,
+				"ProductionW":    f.ProductionW,
+				"ConsumptionW":   f.ConsumptionW,
+				"ChargeW":        f.ChargeW,
+				"DischargeW":     f.DischargeW,
+				"SOC":            f.SOC,
+			},
+			f.PeriodEnd)
+		err := wapib.WritePoint(context.Background(), p)
+		if err != nil {
+			println(err.Error())
+		}
 	}
 
 	c.JSON(http.StatusOK, fc)

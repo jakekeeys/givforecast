@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	influxdb2 "github.com/influxdata/influxdb-client-go/v2"
 	"os"
 	"time"
 
@@ -22,7 +23,9 @@ func main() {
 	gec := givenergy.NewClient(os.Getenv("GIVENERGY_USERNAME"), os.Getenv("GIVENERGY_PASSWORD"), os.Getenv("GIVENERGY_SERIAL"), os.Getenv("GIVENERGY_API_KEY"))
 	f := forecaster.New(sc, gec)
 	gtcpc := givtcp.NewClient()
-	s := api.NewServer(f, sc, gtcpc, gec)
+	ifc := influxdb2.NewClient("http://localhost:8086", "my-super-secret-auth-token")
+
+	s := api.NewServer(f, sc, gtcpc, gec, ifc)
 
 	r.GET("/forecast", s.Forecast)
 	r.GET("/forecast/now", s.ForecastNow)
