@@ -5,7 +5,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/jasonlvhit/gocron"
+	"github.com/robfig/cron/v3"
 
 	"github.com/gin-gonic/gin"
 	"github.com/jakekeeys/givforecast/internal/api"
@@ -24,54 +24,35 @@ func main() {
 	gtcpc := givtcp.NewClient()
 	s := api.NewServer(f, sc, gtcpc, gec)
 
-	r.GET("/forecast", s.Forecast)
-	r.GET("/forecast/now", s.ForecastNow)
-	r.GET("/forecast/config", s.Config)
+	r.GET("/forecast", s.ForecastHandler)
+	r.GET("/forecast/now", s.ForecastNowHandler)
+	r.GET("/forecast/config", s.ConfigHandler)
 
-	r.POST("/givtcp/chargetarget", s.UpdateChargeTarget)
+	r.POST("/givtcp/chargetarget", s.UpdateChargeTargetHandler)
 
-	r.POST("/soclast/forecast", s.UpdateForecastData)
-	r.PUT("/solcast/forecast", s.SetForecastData)
+	r.POST("/soclast/forecast", s.UpdateForecastDataHandler)
+	r.PUT("/solcast/forecast", s.SetForecastDataHandler)
 
-	r.POST("/givenergy/consumptionaverages", s.UpdateConsumptionAverages)
-	r.GET("/givenergy/consumptionaverages", s.GetConsumptionAverages)
-	r.PUT("/givenergy/consumptionaverages", s.SetConsumptionAverages)
+	r.POST("/givenergy/consumptionaverages", s.UpdateConsumptionAveragesHandler)
+	r.GET("/givenergy/consumptionaverages", s.GetConsumptionAveragesHandler)
+	r.PUT("/givenergy/consumptionaverages", s.SetConsumptionAveragesHandler)
 
 	// todo post actual measurements production measurement from ge to solcast
 
-	gocron.Every(1).Day().At("00:15").Do(func() { // todo make config
-		println("updating solar forecasts")
-		err := sc.UpdateForecast()
+	c := cron.New(cron.WithLocation(time.Local))
+	uc := os.Getenv("UPDATE_TARGET_CRON")
+	if uc != "" {
+		_, err := c.AddFunc(uc, func() {
+			err := s.UpdateChargeTarget()
+			if err != nil {
+				panic(fmt.Errorf("err updating charge target: %w", err))
+			}
+		})
 		if err != nil {
-			println(err)
-			return
+			panic(fmt.Errorf("err scheduling UpdateChargeTarget: %w", err))
 		}
-
-		println("updating consumption averages")
-		err = gec.UpdateConsumptionAverages()
-		if err != nil {
-			println(err)
-			return
-		}
-
-		d := time.Now().Local().Truncate(time.Hour * 24)
-		println(fmt.Sprintf("forecasting date %s", d.String()))
-		forecast, err := f.Forecast(time.Now().Truncate(time.Hour * 24))
-		if err != nil {
-			println(err)
-			return
-		}
-
-		t := int(forecast.RecommendedChargeTarget)
-		println(fmt.Sprintf("setting charge target to %d", t))
-		// todo make this an interface supported by either givtcp or gecloud
-		err = gtcpc.SetChargeTarget(t)
-		if err != nil {
-			println(err)
-			return
-		}
-	})
-	gocron.Start() // todo make config
+	}
+	c.Start()
 
 	err := r.Run(":8080")
 	if err != nil {
