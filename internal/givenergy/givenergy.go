@@ -117,6 +117,98 @@ func (c *Client) doRequest(r *http.Request, retry bool) (*http.Response, error) 
 	return resp, nil
 }
 
+type AllBatteryDataResponse struct {
+	BatteryStatus          string `json:"batteryStatus"`
+	Mode                   string `json:"mode"`
+	BatteryPercent         string `json:"batteryPercent"`
+	SelfConsumptionMode    string `json:"selfConsumptionMode"`
+	ShallowCharge          string `json:"shallowCharge"`
+	DischargeFlag          string `json:"dischargeFlag"`
+	DischargeScheduleStart string `json:"dischargeScheduleStart"`
+	DischargeScheduleEnd   string `json:"dischargeScheduleEnd"`
+	DischargeDownTo        string `json:"dischargeDownTo"`
+	ChargeFlag             string `json:"chargeFlag"`
+	ChargeScheduleStart    string `json:"chargeScheduleStart"`
+	ChargeScheduleEnd      string `json:"chargeScheduleEnd"`
+	ChargeUpTo             string `json:"chargeUpTo"`
+}
+
+func (c *Client) GetAllBatteryData() (*AllBatteryDataResponse, error) {
+	request, err := http.NewRequest(http.MethodGet, fmt.Sprintf("%s/batteryData/all", geBatteryBaseURL), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := c.doRequest(request, false)
+	if resp.StatusCode != http.StatusOK {
+		return nil, errors.New("error setting charge target via ge battery api")
+	}
+
+	var allBatteryData AllBatteryDataResponse
+	err = json.NewDecoder(resp.Body).Decode(&allBatteryData)
+	if err != nil {
+		return nil, err
+	}
+
+	// normalise times
+	switch len(allBatteryData.ChargeScheduleStart) {
+	case 2:
+		allBatteryData.ChargeScheduleStart = "00" + allBatteryData.ChargeScheduleStart
+	case 3:
+		allBatteryData.ChargeScheduleStart = "0" + allBatteryData.ChargeScheduleStart
+	}
+
+	switch len(allBatteryData.ChargeScheduleEnd) {
+	case 2:
+		allBatteryData.ChargeScheduleEnd = "00" + allBatteryData.ChargeScheduleEnd
+	case 3:
+		allBatteryData.ChargeScheduleEnd = "0" + allBatteryData.ChargeScheduleEnd
+	}
+
+	return &allBatteryData, nil
+}
+
+type PlantChartDayResponse struct {
+	IsOnPlant bool   `json:"isOnPlant"`
+	XAxis     string `json:"xAxis"`
+	Data      []struct {
+		BatPowerActual float64 `json:"batPowerActual"`
+		LoadPower      float64 `json:"loadPower"`
+		Year           float64 `json:"year"`
+		PacImport      float64 `json:"pacImport"`
+		BatPower       float64 `json:"batPower"`
+		Minute         int     `json:"minute"`
+		Second         int     `json:"second"`
+		Pac            float64 `json:"pac"`
+		Month          int     `json:"month"`
+		Hour           int     `json:"hour"`
+		Ppv            float64 `json:"ppv"`
+		Time           string  `json:"time"`
+		Day            int     `json:"day"`
+		PacExport      float64 `json:"pacExport"`
+	} `json:"data"`
+	Success bool `json:"success"`
+}
+
+func (c *Client) PlantChartDay(date time.Time) (*PlantChartDayResponse, error) {
+	req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("%s/plantChart/day/%s", geBatteryBaseURL, date.Format(reqDateFormat)), nil)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := c.doRequest(req, false)
+	if err != nil {
+		return nil, err
+	}
+
+	var plantCharDayResponse PlantChartDayResponse
+	err = json.NewDecoder(resp.Body).Decode(&plantCharDayResponse)
+	if err != nil {
+		return nil, err
+	}
+
+	return &plantCharDayResponse, nil
+}
+
 func (c *Client) SetChargeTarget(target int) error {
 	type SetChargeTargetRequest struct {
 		Value string `json:"value"`

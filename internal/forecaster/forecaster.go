@@ -32,18 +32,18 @@ type Forecaster struct {
 }
 
 func New(sc *solcast.Client, gec *givenergy.Client, opts ...Option) *Forecaster {
-	acChargeStart := time.Date(1, 1, 1, 0, 30, 0, 0, time.Local) // todo make config
-	acChargeEnd := time.Date(1, 1, 1, 7, 30, 0, 0, time.Local)   // todo make config
+	acChargeStart := time.Date(1, 1, 1, 0, 30, 0, 0, time.Local)
+	acChargeEnd := time.Date(1, 1, 1, 7, 30, 0, 0, time.Local)
 
 	projector := &Forecaster{
 		sc:  sc,
 		gec: gec,
 		config: &Config{
-			StorageCapacityKwh: 16.38, // todo consume from ge cloud
-			InverterEfficiency: 0.965, // todo make config
-			ACChargeStart:      acChargeStart,
-			ACChargeEnd:        acChargeEnd,
-			BatteryReserve:     4.0,
+			StorageCapacityKwh: 16.38,         // todo consume from ge cloud (inverter/getInverterInfo)
+			InverterEfficiency: 0.965,         // todo consume from ge cloud
+			ACChargeStart:      acChargeStart, // todo consume from ge cloud (BatteryData/All)
+			ACChargeEnd:        acChargeEnd,   // todo consume from ge cloud (BatteryData/All)
+			BatteryReserve:     4.0,           // todo consume from ge cloud (BatteryData/All)
 		},
 	}
 

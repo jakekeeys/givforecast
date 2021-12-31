@@ -45,7 +45,7 @@ func main() {
 		_, err := c.AddFunc(uc, func() {
 			err := s.UpdateChargeTarget()
 			if err != nil {
-				panic(fmt.Errorf("err updating charge target: %w", err))
+				println(fmt.Errorf("err updating charge target: %w", err))
 			}
 		})
 		if err != nil {
