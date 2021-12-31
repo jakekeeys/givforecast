@@ -28,6 +28,10 @@ func NewClient(apiKey, resourceID string) *Client {
 	}
 }
 
+type EstimatedActualData struct {
+	Forecasts []Forecast `json:"estimated_actuals"`
+}
+
 type ForecastData struct {
 	Forecasts []Forecast `json:"forecasts"`
 }
@@ -74,7 +78,7 @@ func (c *Client) UpdateForecast() error {
 		return err
 	}
 
-	var actualsResponse ForecastData
+	var actualsResponse EstimatedActualData
 	err = json.NewDecoder(get.Body).Decode(&actualsResponse)
 	if err != nil {
 		return err
