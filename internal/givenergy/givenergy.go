@@ -117,6 +117,67 @@ func (c *Client) doRequest(r *http.Request, retry bool) (*http.Response, error) 
 	return resp, nil
 }
 
+type BatteryDataResponse struct {
+	Success       bool `json:"success"`
+	Lost          bool `json:"lost"`
+	MaxVoltModule int  `json:"maxVoltModule"`
+	MinVoltModule int  `json:"minVoltModule"`
+	Modules       []struct {
+		CellVoltage8         int    `json:"cellVoltage8"`
+		CellVoltage9         int    `json:"cellVoltage9"`
+		CellVoltage4         int    `json:"cellVoltage4"`
+		ModuleVoltage        int    `json:"moduleVoltage"`
+		CellVoltage5         int    `json:"cellVoltage5"`
+		DesignCapText        string `json:"designCapText"`
+		CellVoltage6         int    `json:"cellVoltage6"`
+		CellVoltage7         int    `json:"cellVoltage7"`
+		ModuleSoc            int    `json:"moduleSoc"`
+		CellVoltage10        int    `json:"cellVoltage10"`
+		CellVoltage1         int    `json:"cellVoltage1"`
+		CellVoltage2         int    `json:"cellVoltage2"`
+		CellVoltage3         int    `json:"cellVoltage3"`
+		CellVoltage14        int    `json:"cellVoltage14"`
+		HasBmsCellModuleInfo bool   `json:"hasBmsCellModuleInfo"`
+		CellVoltage13        int    `json:"cellVoltage13"`
+		CellVoltage12        int    `json:"cellVoltage12"`
+		CellTempreture2Text  string `json:"cellTempreture2Text"`
+		CellVoltage11        int    `json:"cellVoltage11"`
+		MinVoltItem          int    `json:"minVoltItem"`
+		MaxVoltDiffValue     int    `json:"maxVoltDiffValue"`
+		CellTempreture3Text  string `json:"cellTempreture3Text"`
+		Module               int    `json:"module"`
+		Charging             int    `json:"charging"`
+		MaxVoltItem          int    `json:"maxVoltItem"`
+		CellTempreture4Text  string `json:"cellTempreture4Text"`
+		CellVoltage16        int    `json:"cellVoltage16"`
+		CellVoltage15        int    `json:"cellVoltage15"`
+		Discharging          int    `json:"discharging"`
+		ModuleTempretureText string `json:"moduleTempretureText"`
+		FullCapText          string `json:"fullCapText"`
+		Time                 string `json:"time"`
+		CellTempreture1Text  string `json:"cellTempreture1Text"`
+	} `json:"modules"`
+}
+
+func (c *Client) GetBatteryData() (*BatteryDataResponse, error) {
+	req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("%s/pcs/batCell/getBatCellData?serialNum=%s", geCloudBaseURL, c.serial), nil)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := c.doRequest(req, false)
+	if err != nil {
+		return nil, err
+	}
+
+	var batteryDataResponse BatteryDataResponse
+	err = json.NewDecoder(resp.Body).Decode(&batteryDataResponse)
+	if err != nil {
+		return nil, err
+	}
+
+	return &batteryDataResponse, nil
+}
+
 type AllBatteryDataResponse struct {
 	BatteryStatus          string `json:"batteryStatus"`
 	Mode                   string `json:"mode"`

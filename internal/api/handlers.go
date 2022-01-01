@@ -88,6 +88,16 @@ func (s *Server) SetConsumptionAveragesHandler(c *gin.Context) {
 	return
 }
 
+func (s *Server) GetBatteryDataHandler(c *gin.Context) {
+	data, err := s.gec.GetBatteryData()
+	if err != nil {
+		c.String(http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	c.JSON(http.StatusOK, data)
+}
+
 func (s *Server) GetConsumptionAveragesHandler(c *gin.Context) {
 	averages, err := s.gec.GetConsumptionAverages()
 	if err != nil {

@@ -36,6 +36,7 @@ func main() {
 	r.POST("/givenergy/consumptionaverages", s.UpdateConsumptionAveragesHandler)
 	r.GET("/givenergy/consumptionaverages", s.GetConsumptionAveragesHandler)
 	r.PUT("/givenergy/consumptionaverages", s.SetConsumptionAveragesHandler)
+	r.GET("/givenergy/batterydata", s.GetBatteryDataHandler)
 
 	// todo post actual measurements production measurement from ge to solcast
 
