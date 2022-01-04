@@ -15,6 +15,8 @@ type Config struct {
 	ACChargeStart      time.Time
 	ACChargeEnd        time.Time
 	BatteryReserve     float64
+	MaxChargeKw        float64
+	MaxDischargeKw     float64
 }
 
 func WithConfig(c *Config) Option {
@@ -44,6 +46,8 @@ func New(sc *solcast.Client, gec *givenergy.Client, opts ...Option) *Forecaster 
 			ACChargeStart:      acChargeStart, // todo consume from ge cloud (BatteryData/All)
 			ACChargeEnd:        acChargeEnd,   // todo consume from ge cloud (BatteryData/All)
 			BatteryReserve:     4.0,           // todo consume from ge cloud (BatteryData/All)
+			MaxChargeKw:        3.0,           // todo consume from ge cloud
+			MaxDischargeKw:     3.0,           // todo consume from ge cloud
 		},
 	}
 
@@ -178,10 +182,10 @@ func (f *Forecaster) Forecast(t time.Time) (*ForecastDay, error) {
 		netKwh := consumptionKwh - productionKwh
 		var chargeKw, dischargeKw float64
 		if netKwh > 0 {
-			dischargeKw = netKwh * ((1 - f.config.InverterEfficiency) + 1)
+			dischargeKw = math.Min(netKwh*((1-f.config.InverterEfficiency)+1), f.config.MaxDischargeKw*0.5)
 			dayDischargeKwh = dayDischargeKwh + dischargeKw
 		} else {
-			chargeKw = math.Abs(netKwh) * f.config.InverterEfficiency
+			chargeKw = math.Min(math.Abs(netKwh)*f.config.InverterEfficiency, f.config.MaxChargeKw*0.5)
 			dayChargeKwh = dayChargeKwh + chargeKw
 		}
 
