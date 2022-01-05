@@ -142,3 +142,22 @@ func (s *Server) UpdateForecastDataHandler(c *gin.Context) {
 
 	return
 }
+
+func (s *Server) GetForecastDataHandler(c *gin.Context) {
+	forecast, err := s.sc.GetForecast()
+	if err != nil {
+		c.String(http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	c.JSON(http.StatusOK, forecast)
+	return
+}
+
+func (s *Server) SubmitSolarActualsHandler(c *gin.Context) {
+	err := s.SubmitSolarActuals()
+	if err != nil {
+		c.String(http.StatusInternalServerError, err.Error())
+		return
+	}
+}

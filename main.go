@@ -32,6 +32,8 @@ func main() {
 
 	r.POST("/soclast/forecast", s.UpdateForecastDataHandler)
 	r.PUT("/solcast/forecast", s.SetForecastDataHandler)
+	r.GET("/solcast/forecast", s.GetForecastDataHandler)
+	r.POST("/solcast/actuals", s.SubmitSolarActualsHandler)
 
 	r.POST("/givenergy/consumptionaverages", s.UpdateConsumptionAveragesHandler)
 	r.GET("/givenergy/consumptionaverages", s.GetConsumptionAveragesHandler)
