@@ -65,6 +65,7 @@ func (s *Server) UpdateChargeTarget() error {
 }
 
 func (s *Server) SubmitSolarActuals() error {
+	println("submitting solar readings to solcast")
 	yesterday := time.Now().Local().Truncate(time.Hour*24).AddDate(0, 0, -1)
 	day, err := s.gec.PlantChartDay(yesterday)
 	if err != nil {
