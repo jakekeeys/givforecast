@@ -313,8 +313,8 @@ type InverterChartDayLineResponse struct {
 	MaxValueText string `json:"maxValueText"`
 }
 
-func (c *Client) InverterChartDayLineLoad(date time.Time) (*InverterChartDayLineResponse, error) {
-	req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("%s/invChart/dayLine?serialNum=%s&attr=loadpower&dateText=%s", geCloudBaseURL, c.serial, date.Format(reqDateFormat)), nil)
+func (c *Client) InverterChartDayLineLoad(date time.Time, attribute string) (*InverterChartDayLineResponse, error) {
+	req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("%s/invChart/dayLine?serialNum=%s&attr=%s&dateText=%s", geCloudBaseURL, c.serial, attribute, date.Format(reqDateFormat)), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -365,7 +365,7 @@ func (c *Client) UpdateConsumptionAverages() error {
 
 	now := time.Now().Truncate(time.Hour * 24)
 	for i := -1; i > -8; i-- { // todo make amount of days config
-		measurements, err := c.InverterChartDayLineLoad(now.AddDate(0, 0, i))
+		measurements, err := c.InverterChartDayLineLoad(now.AddDate(0, 0, i), "loadpower")
 		if err != nil {
 			return err
 		}

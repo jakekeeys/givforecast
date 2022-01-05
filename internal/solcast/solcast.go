@@ -1,9 +1,11 @@
 package solcast
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"sort"
 	"sync"
@@ -110,4 +112,32 @@ func (c *Client) GetForecast() (*ForecastData, error) {
 
 	data := *c.data
 	return &data, nil
+}
+
+type Measurement struct {
+	PeriodEnd  time.Time `json:"period_end"`
+	Period     string    `json:"period"`
+	TotalPower float64   `json:"total_power"`
+}
+
+type SubmitMeasurementsRequest struct {
+	Measurements []Measurement `json:"measurements"`
+}
+
+func (c *Client) SubmitMeasurements(request *SubmitMeasurementsRequest) error {
+	bodyBytes, err := json.Marshal(request)
+	if err != nil {
+		return err
+	}
+
+	resp, err := c.c.Post(fmt.Sprintf("%s/%s/measurements?api_key=%s", c.baseURL, c.resourceID, c.apiKey), "application/json", bytes.NewBuffer(bodyBytes))
+	if err != nil {
+		return err
+	}
+	if resp.StatusCode != http.StatusOK {
+		respBody, _ := ioutil.ReadAll(resp.Body)
+		return fmt.Errorf("error submitting solar measurements: %d, %s", resp.StatusCode, string(respBody))
+	}
+
+	return nil
 }

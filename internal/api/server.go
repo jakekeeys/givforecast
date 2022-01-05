@@ -2,6 +2,7 @@ package api
 
 import (
 	"fmt"
+	"sort"
 	"time"
 
 	"github.com/jakekeeys/givforecast/internal/givenergy"
@@ -47,7 +48,7 @@ func (s *Server) UpdateChargeTarget() error {
 
 	d := time.Now().Local().Truncate(time.Hour * 24)
 	println(fmt.Sprintf("forecasting date %s", d.String()))
-	forecast, err := s.f.Forecast(time.Now().Truncate(time.Hour * 24))
+	forecast, err := s.f.Forecast(d)
 	if err != nil {
 		return err
 	}
@@ -61,4 +62,61 @@ func (s *Server) UpdateChargeTarget() error {
 	}
 
 	return nil
+}
+
+func (s *Server) SubmitSolarActuals() error {
+	yesterday := time.Now().Local().Truncate(time.Hour*24).AddDate(0, 0, -1)
+	day, err := s.gec.PlantChartDay(yesterday)
+	if err != nil {
+		return err
+	}
+
+	solarActuals := map[time.Time]float64{}
+	for _, measurement := range day.Data {
+		t, err := time.Parse("2006-01-02 15:04:05", measurement.Time)
+		if err != nil {
+			return err
+		}
+
+		t = roundUpTime(t, time.Minute*10)
+		if v, ok := solarActuals[t]; ok {
+			v = (v + measurement.Ppv) / 2
+		} else {
+			solarActuals[t] = measurement.Ppv
+		}
+	}
+
+	var measurements []solcast.Measurement
+	for k, v := range solarActuals {
+		if v < 50 {
+			continue
+		}
+
+		measurements = append(measurements, solcast.Measurement{
+			PeriodEnd:  k,
+			Period:     "PT10M",
+			TotalPower: v / 1000,
+		})
+	}
+
+	sort.Slice(measurements, func(i, j int) bool {
+		return measurements[i].PeriodEnd.Before(measurements[j].PeriodEnd)
+	})
+
+	err = s.sc.SubmitMeasurements(&solcast.SubmitMeasurementsRequest{Measurements: measurements})
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func roundUpTime(t time.Time, roundOn time.Duration) time.Time {
+	t = t.Round(roundOn)
+
+	if time.Since(t) >= 0 {
+		t = t.Add(roundOn)
+	}
+
+	return t
 }

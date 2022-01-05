@@ -41,6 +41,7 @@ func main() {
 	// todo post actual measurements production measurement from ge to solcast
 
 	c := cron.New(cron.WithLocation(time.Local))
+
 	uc := os.Getenv("UPDATE_TARGET_CRON")
 	if uc != "" {
 		_, err := c.AddFunc(uc, func() {
@@ -53,6 +54,20 @@ func main() {
 			panic(fmt.Errorf("err scheduling UpdateChargeTarget: %w", err))
 		}
 	}
+
+	ss := os.Getenv("SUBMIT_SOLAR_CRON")
+	if ss != "" {
+		_, err := c.AddFunc(ss, func() {
+			err := s.SubmitSolarActuals()
+			if err != nil {
+				println(fmt.Errorf("err submitting solar measurements: %w", err))
+			}
+		})
+		if err != nil {
+			panic(fmt.Errorf("err scheduling UpdateChargeTarget: %w", err))
+		}
+	}
+
 	c.Start()
 
 	err := r.Run(":8080")
