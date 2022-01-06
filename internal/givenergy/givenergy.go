@@ -388,7 +388,7 @@ func (c *Client) UpdateConsumptionAverages() error {
 			}
 
 			if v, ok := consumptionAverages[period]; ok {
-				v = (v + measurement.Value) / 2
+				consumptionAverages[period] = (v + measurement.Value) / 2
 			} else {
 				consumptionAverages[period] = measurement.Value
 			}

@@ -81,7 +81,7 @@ func (s *Server) SubmitSolarActuals() error {
 
 		t = roundUpTime(t, time.Minute*10)
 		if v, ok := solarActuals[t]; ok {
-			v = (v + measurement.Ppv) / 2
+			solarActuals[t] = (v + measurement.Ppv) / 2
 		} else {
 			solarActuals[t] = measurement.Ppv
 		}
