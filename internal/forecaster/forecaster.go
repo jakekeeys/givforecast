@@ -168,7 +168,7 @@ func (f *Forecaster) Forecast(t time.Time) (*ForecastDay, error) {
 		}
 
 		consumptionKwh := 0.0
-		if forecast.PeriodEnd.Minute() == 0 {
+		if forecast.PeriodEnd.Minute() == 0 { // todo replace time.roundUpTo()
 			consumptionKwh = (consumptionAverages[time.Date(1, 1, 1, forecast.PeriodEnd.Hour()-1, 30, 0, 0, time.Local)] / 1000) * 0.5
 		} else {
 			consumptionKwh = (consumptionAverages[time.Date(1, 1, 1, forecast.PeriodEnd.Hour(), 0, 0, 0, time.Local)] / 1000) * 0.5

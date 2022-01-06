@@ -381,7 +381,7 @@ func (c *Client) UpdateConsumptionAverages() error {
 			}
 
 			var period = time.Time{}
-			if mt.Minute() < 30 {
+			if mt.Minute() < 30 { // todo replace time.roundUpTo()
 				period = time.Date(1, 1, 1, mt.Hour(), 0, 0, 0, time.Local)
 			} else {
 				period = time.Date(1, 1, 1, mt.Hour(), 30, 0, 0, time.Local)
