@@ -49,7 +49,7 @@ func main() {
 		_, err := c.AddFunc(uc, func() {
 			err := s.UpdateChargeTarget()
 			if err != nil {
-				println(fmt.Errorf("err updating charge target: %w", err))
+				println(fmt.Errorf("err updating charge target: %w", err).Error())
 			}
 		})
 		if err != nil {
@@ -62,7 +62,7 @@ func main() {
 		_, err := c.AddFunc(ss, func() {
 			err := s.SubmitSolarActuals()
 			if err != nil {
-				println(fmt.Errorf("err submitting solar measurements: %w", err))
+				println(fmt.Errorf("err submitting solar measurements: %w", err).Error())
 			}
 		})
 		if err != nil {

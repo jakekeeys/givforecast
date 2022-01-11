@@ -58,7 +58,12 @@ func (s *Server) UpdateChargeTarget() error {
 	// todo make this an interface supported by either givtcp or gecloud
 	err = s.gtcpc.SetChargeTarget(t)
 	if err != nil {
-		return err
+		println("setting charge target failed, waiting and retrying")
+		time.Sleep(time.Second * 3)
+		err = s.gtcpc.SetChargeTarget(t)
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil
