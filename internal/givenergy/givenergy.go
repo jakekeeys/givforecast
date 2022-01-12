@@ -27,11 +27,12 @@ type Client struct {
 	password            string
 	serial              string
 	apiKey              string
+	consumptionAvgDays  int
 	consumptionAverages *map[time.Time]float64
 	m                   sync.RWMutex
 }
 
-func NewClient(username, password, serial, apiKey string) *Client {
+func NewClient(username, password, serial, apiKey, consumptionAvgDays string) *Client {
 	jar, err := cookiejar.New(nil)
 	if err != nil {
 		panic(err)
@@ -40,12 +41,21 @@ func NewClient(username, password, serial, apiKey string) *Client {
 		Jar: jar,
 	}
 
+	cad := 7
+	if consumptionAvgDays != "" {
+		cad, err = strconv.Atoi(consumptionAvgDays)
+		if err != nil {
+			panic(err)
+		}
+	}
+
 	return &Client{
-		c:        &client,
-		username: username,
-		password: password,
-		serial:   serial,
-		apiKey:   apiKey,
+		c:                  &client,
+		username:           username,
+		password:           password,
+		serial:             serial,
+		apiKey:             apiKey,
+		consumptionAvgDays: cad,
 	}
 }
 
@@ -364,7 +374,7 @@ func (c *Client) UpdateConsumptionAverages() error {
 	consumptionAverages := make(map[time.Time]float64)
 
 	now := time.Now().Truncate(time.Hour * 24)
-	for i := -1; i > -8; i-- { // todo make amount of days config
+	for i := -1; i > -c.consumptionAvgDays; i-- {
 		measurements, err := c.InverterChartDayLineLoad(now.AddDate(0, 0, i), "loadpower")
 		if err != nil {
 			return err
