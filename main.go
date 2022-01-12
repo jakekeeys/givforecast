@@ -27,7 +27,7 @@ func main() {
 	r.GET("/forecast", s.ForecastHandler)
 	r.GET("/forecast/now", s.ForecastNowHandler)
 	r.GET("/forecast/config", s.ConfigHandler)
-	r.POST("/forecast/config", s.SetConfigHandler)
+	r.PUT("/forecast/config", s.SetConfigHandler)
 
 	r.POST("/givtcp/chargetarget", s.UpdateChargeTargetHandler)
 
