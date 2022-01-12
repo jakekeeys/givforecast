@@ -4,6 +4,8 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/jakekeeys/givforecast/internal/forecaster"
+
 	"github.com/gin-gonic/gin"
 	"github.com/jakekeeys/givforecast/internal/solcast"
 )
@@ -74,6 +76,18 @@ func (s *Server) ConfigHandler(c *gin.Context) {
 	config := s.f.GetConfig()
 
 	c.JSON(http.StatusOK, config)
+}
+
+func (s *Server) SetConfigHandler(c *gin.Context) {
+	var config forecaster.Config
+	err := c.ShouldBindJSON(&config)
+	if err != nil {
+		c.String(http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	s.f.SetConfig(config)
+	return
 }
 
 func (s *Server) SetConsumptionAveragesHandler(c *gin.Context) {

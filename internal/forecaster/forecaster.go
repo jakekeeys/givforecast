@@ -3,6 +3,7 @@ package forecaster
 import (
 	"errors"
 	"math"
+	"sync"
 	"time"
 
 	"github.com/jakekeeys/givforecast/internal/givenergy"
@@ -31,6 +32,7 @@ type Forecaster struct {
 	sc     *solcast.Client
 	gec    *givenergy.Client
 	config *Config
+	m      sync.RWMutex
 }
 
 func New(sc *solcast.Client, gec *givenergy.Client, opts ...Option) *Forecaster {
@@ -83,6 +85,14 @@ type Forecast struct {
 
 func (f *Forecaster) GetConfig() *Config {
 	return f.config
+}
+
+func (f *Forecaster) SetConfig(c Config) {
+	f.m.Lock()
+	defer f.m.Unlock()
+
+	f.config = &c
+	return
 }
 
 func (f *Forecaster) ForecastNow(t time.Time) (*Forecast, error) {
