@@ -18,6 +18,25 @@ func (s *Server) UpdateChargeTargetHandler(c *gin.Context) {
 	}
 }
 
+func (s *Server) SetChargeTargetHandler(c *gin.Context) {
+	type SetChargeTargetRequest struct {
+		ChargeToPercent int `json:"chargeToPercent"`
+	}
+
+	var ctr SetChargeTargetRequest
+	err := c.ShouldBindJSON(&ctr)
+	if err != nil {
+		c.String(http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	err = s.gtcpc.SetChargeTarget(ctr.ChargeToPercent)
+	if err != nil {
+		c.String(http.StatusInternalServerError, err.Error())
+		return
+	}
+}
+
 func (s *Server) ForecastNowHandler(c *gin.Context) {
 	t := time.Now().Local()
 

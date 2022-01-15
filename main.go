@@ -30,6 +30,7 @@ func main() {
 	r.PUT("/forecast/config", s.SetConfigHandler)
 
 	r.POST("/givtcp/chargetarget", s.UpdateChargeTargetHandler)
+	r.PUT("/givtcp/chargetarget", s.SetChargeTargetHandler)
 
 	r.POST("/soclast/forecast", s.UpdateForecastDataHandler)
 	r.PUT("/solcast/forecast", s.SetForecastDataHandler)
