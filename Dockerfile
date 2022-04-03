@@ -8,4 +8,5 @@ RUN go build -v -o app .
 FROM alpine
 WORKDIR /service
 COPY --from=build /build/app .
+RUN apk add --no-cache tzdata
 ENTRYPOINT ["./app"]

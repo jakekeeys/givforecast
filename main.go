@@ -18,6 +18,15 @@ import (
 func main() {
 	r := gin.Default()
 
+	tzl := os.Getenv("TZ_LOCATION")
+	if tzl != "" {
+		loc, err := time.LoadLocation(tzl)
+		if err != nil {
+			panic(err)
+		}
+		time.Local = loc
+	}
+
 	sc := solcast.NewClient(os.Getenv("SOLCAST_API_KEY"), os.Getenv("SOLCAST_RESOURCE_ID"))
 	gec := givenergy.NewClient(os.Getenv("GIVENERGY_USERNAME"), os.Getenv("GIVENERGY_PASSWORD"), os.Getenv("GIVENERGY_SERIAL"), os.Getenv("GIVENERGY_API_KEY"), os.Getenv("CONSUMPTION_AVERAGE_DAYS"))
 	f := forecaster.New(sc, gec)

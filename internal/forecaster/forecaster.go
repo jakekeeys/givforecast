@@ -2,7 +2,10 @@ package forecaster
 
 import (
 	"errors"
+	"fmt"
 	"math"
+	"os"
+	"strconv"
 	"sync"
 	"time"
 
@@ -52,6 +55,16 @@ func New(sc *solcast.Client, gec *givenergy.Client, opts ...Option) *Forecaster 
 			MaxChargeKw:        3.0,           // todo consume from ge cloud
 			MaxDischargeKw:     3.0,           // todo consume from ge cloud
 		},
+	}
+
+	ackws := os.Getenv("AVG_CONS_KWH") // todo do this properly using the opts
+	if ackws != "" {
+		ackw, err := strconv.ParseFloat(ackws, 10)
+		if err != nil {
+			println(fmt.Errorf("err parsing AVG_CONS_KWH: %w", err).Error())
+		} else {
+			projector.config.AvgConsumptionKw = ackw
+		}
 	}
 
 	for _, opt := range opts {
