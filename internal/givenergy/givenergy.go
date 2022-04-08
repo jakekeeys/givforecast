@@ -373,9 +373,10 @@ func (c *Client) SetConsumptionAverages(consumptionAverages map[time.Time]float6
 func (c *Client) UpdateConsumptionAverages() error {
 	consumptionAverages := make(map[time.Time]float64)
 
-	now := time.Now().Truncate(time.Hour * 24)
+	now := time.Now().UTC()
+	today := time.Date(now.Local().Year(), now.Local().Month(), now.Local().Day(), 0, 0, 0, 0, time.Local)
 	for i := -1; i > -c.consumptionAvgDays; i-- {
-		measurements, err := c.InverterChartDayLineLoad(now.AddDate(0, 0, i), "loadpower")
+		measurements, err := c.InverterChartDayLineLoad(today.AddDate(0, 0, i), "loadpower")
 		if err != nil {
 			return err
 		}

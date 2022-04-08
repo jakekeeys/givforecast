@@ -3,6 +3,7 @@ WORKDIR /build
 COPY go.* ./
 RUN go mod download
 COPY . .
+RUN apk add --no-cache git
 RUN go build -v -o app .
 
 FROM alpine

@@ -176,7 +176,7 @@ func (f *Forecaster) Forecast(t time.Time) (*ForecastDay, error) {
 		return nil, err
 	}
 
-	t = t.Truncate(time.Hour * 24)
+	t = time.Date(t.Local().Year(), t.Local().Month(), t.Local().Day(), 0, 0, 0, 0, time.Local)
 	dischargingPeriodStart := time.Date(t.Year(), t.Month(), t.Day(), f.config.ACChargeEnd.Hour(), f.config.ACChargeEnd.Minute(), 0, 0, time.Local)
 	// This will only work if the charging period starts after midnight as we're assuming this and setting the date to tomorrow
 	dischargingPeriodEnd := time.Date(t.Year(), t.Month(), t.Day()+1, f.config.ACChargeStart.Hour(), f.config.ACChargeStart.Minute(), 0, 0, time.Local)

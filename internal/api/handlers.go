@@ -71,7 +71,8 @@ func (s *Server) ForecastHandler(c *gin.Context) {
 		return
 	}
 
-	today := time.Now().Local().Truncate(time.Hour * 24)
+	now := time.Now().UTC()
+	today := time.Date(now.Local().Year(), now.Local().Month(), now.Local().Day(), 0, 0, 0, 0, time.Local)
 	if d.Before(today) {
 		c.String(http.StatusBadRequest, "date must be today or < 7 days in the future")
 		return

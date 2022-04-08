@@ -46,7 +46,8 @@ func (s *Server) UpdateChargeTarget() error {
 		return err
 	}
 
-	d := time.Now().Local().Truncate(time.Hour * 24)
+	now := time.Now().UTC()
+	d := time.Date(now.Local().Year(), now.Local().Month(), now.Local().Day(), 0, 0, 0, 0, time.Local)
 	println(fmt.Sprintf("forecasting date %s", d.String()))
 	forecast, err := s.f.Forecast(d)
 	if err != nil {
@@ -71,7 +72,8 @@ func (s *Server) UpdateChargeTarget() error {
 
 func (s *Server) SubmitSolarActuals() error {
 	println("submitting solar readings to solcast")
-	yesterday := time.Now().Local().Truncate(time.Hour*24).AddDate(0, 0, -1)
+	now := time.Now().UTC()
+	yesterday := time.Date(now.Local().Year(), now.Local().Month(), now.Local().Day(), 0, 0, 0, 0, time.Local).AddDate(0, 0, -1)
 	day, err := s.gec.PlantChartDay(yesterday)
 	if err != nil {
 		return err
