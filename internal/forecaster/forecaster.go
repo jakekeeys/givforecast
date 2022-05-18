@@ -40,8 +40,8 @@ type Forecaster struct {
 }
 
 func New(sc *solcast.Client, gec *givenergy.Client, opts ...Option) *Forecaster {
-	acChargeStart := time.Date(1, 1, 1, 0, 30, 0, 0, time.Local)
-	acChargeEnd := time.Date(1, 1, 1, 7, 30, 0, 0, time.Local)
+	acChargeStart := time.Date(1, 1, 1, 0, 35, 0, 0, time.Local)
+	acChargeEnd := time.Date(1, 1, 1, 7, 25, 0, 0, time.Local)
 
 	projector := &Forecaster{
 		sc:  sc,
