@@ -178,9 +178,9 @@ func (f *Forecaster) Forecast(t time.Time) (*ForecastDay, error) {
 	}
 
 	t = time.Date(t.Local().Year(), t.Local().Month(), t.Local().Day(), 0, 0, 0, 0, time.Local)
-	dischargingPeriodStart := time.Date(t.Year(), t.Month(), t.Day(), f.config.ACChargeEnd.Hour(), f.config.ACChargeEnd.Minute(), 0, 0, time.UTC)
+	dischargingPeriodStart := time.Date(t.Year(), t.Month(), t.Day(), f.config.ACChargeEnd.Hour(), 30, 0, 0, time.UTC) // minute hardcoded to avoid initial 5m period caused by charge window offsets
 	// This will only work if the charging period starts after midnight as we're assuming this and setting the date to tomorrow
-	dischargingPeriodEnd := time.Date(t.Year(), t.Month(), t.Day()+1, f.config.ACChargeStart.Hour(), f.config.ACChargeStart.Minute(), 0, 0, time.UTC)
+	dischargingPeriodEnd := time.Date(t.Year(), t.Month(), t.Day()+1, f.config.ACChargeStart.Hour(), 30, 0, 0, time.UTC) // minute hardcoded to avoid initial 5m period caused by charge window offsets
 	var dayProductionKwh, dayConsumptionKwh, dayMaxSOC, dayDischargeKwh, dayChargeKwh float64
 	var forecasts []*Forecast
 	for _, forecast := range forecast.Forecasts {
