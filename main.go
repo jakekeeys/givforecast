@@ -53,7 +53,7 @@ func main() {
 
 	// todo post actual measurements production measurement from ge to solcast
 
-	c := cron.New(cron.WithLocation(time.Local))
+	c := cron.New(cron.WithLocation(time.UTC))
 
 	uc := os.Getenv("UPDATE_TARGET_CRON")
 	if uc != "" {
