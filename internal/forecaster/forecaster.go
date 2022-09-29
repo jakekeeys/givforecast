@@ -269,8 +269,10 @@ func (f *Forecaster) Forecast(t time.Time) (*ForecastDay, error) {
 	}
 
 	recommendedChargeTarget := 100.0
-	if dayMaxSOC > 100 {
+	if dayMaxSOC > 100 && dayMaxSOC < 200 {
 		recommendedChargeTarget = math.Abs((dayMaxSOC - 100) - 100)
+	} else {
+		recommendedChargeTarget = f.config.BatteryReserve
 	}
 
 	for i, projection := range forecasts {
@@ -283,6 +285,12 @@ func (f *Forecaster) Forecast(t time.Time) (*ForecastDay, error) {
 			dayDischargeKwh = forecasts[i-1].DischargeKwh
 			projection.DischargeKwh = forecasts[i-1].DischargeKwh
 			projection.DischargeW = 0
+		}
+		if projection.SOC >= 100 {
+			projection.SOC = 100
+			dayChargeKwh = forecasts[i-1].ChargeKwh
+			projection.ChargeKwh = forecasts[i-1].ChargeKwh
+			projection.ChargeW = 0
 		}
 	}
 
