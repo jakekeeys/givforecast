@@ -68,6 +68,36 @@ func New(sc *solcast.Client, gec *givenergy.Client, opts ...Option) *Forecaster 
 		}
 	}
 
+	sckwhs := os.Getenv("STORAGE_CAPACITY_KWH") // todo do this properly using the opts
+	if sckwhs != "" {
+		sckwh, err := strconv.ParseFloat(sckwhs, 10)
+		if err != nil {
+			println(fmt.Errorf("err parsing STORAGE_CAPACITY_KWH: %w", err).Error())
+		} else {
+			projector.config.StorageCapacityKwh = sckwh
+		}
+	}
+
+	mckws := os.Getenv("MAX_CHARGE_KW") // todo do this properly using the opts
+	if mckws != "" {
+		mckw, err := strconv.ParseFloat(mckws, 10)
+		if err != nil {
+			println(fmt.Errorf("err parsing MAX_CHARGE_KW: %w", err).Error())
+		} else {
+			projector.config.MaxChargeKw = mckw
+		}
+	}
+
+	mdhws := os.Getenv("MAX_DISCHARGE_KW") // todo do this properly using the opts
+	if mdhws != "" {
+		mdhw, err := strconv.ParseFloat(mdhws, 10)
+		if err != nil {
+			println(fmt.Errorf("err parsing MAX_DISCHARGE_KW: %w", err).Error())
+		} else {
+			projector.config.MaxDischargeKw = mdhw
+		}
+	}
+
 	for _, opt := range opts {
 		opt(projector)
 	}
