@@ -27,7 +27,7 @@ func main() {
 		time.Local = loc
 	}
 
-	sc := solcast.NewClient(os.Getenv("SOLCAST_API_KEY"), os.Getenv("SOLCAST_RESOURCE_ID"))
+	sc := solcast.NewClient(os.Getenv("SOLCAST_API_KEY"), os.Getenv("SOLCAST_RESOURCE_ID"), os.Getenv("CACHE_DIR"))
 	gec := givenergy.NewClient(os.Getenv("GIVENERGY_USERNAME"), os.Getenv("GIVENERGY_PASSWORD"), os.Getenv("GIVENERGY_SERIAL"), os.Getenv("GIVENERGY_API_KEY"), os.Getenv("CONSUMPTION_AVERAGE_DAYS"))
 	f := forecaster.New(sc, gec)
 	gtcpc := givtcp.NewClient()

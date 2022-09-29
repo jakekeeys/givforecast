@@ -40,11 +40,11 @@ func (s *Server) UpdateChargeTarget() error {
 		return err
 	}
 
-	println("updating consumption averages")
-	err = s.gec.UpdateConsumptionAverages()
-	if err != nil {
-		return err
-	}
+	//println("updating consumption averages")
+	//err = s.gec.UpdateConsumptionAverages()
+	//if err != nil {
+	//	return err
+	//}
 
 	now := time.Now().UTC()
 	d := time.Date(now.Local().Year(), now.Local().Month(), now.Local().Day(), 0, 0, 0, 0, time.Local)
@@ -57,12 +57,18 @@ func (s *Server) UpdateChargeTarget() error {
 	t := int(forecast.RecommendedChargeTarget)
 	println(fmt.Sprintf("setting charge target to %d", t))
 	// todo make this an interface supported by either givtcp or gecloud
-	err = s.gtcpc.SetChargeTarget(t)
-	if err != nil {
-		println("setting charge target failed, waiting and retrying")
-		time.Sleep(time.Second * 3)
+
+	maxRetries := 5
+	for i := 1; i < maxRetries+1; i++ {
 		err = s.gtcpc.SetChargeTarget(t)
 		if err != nil {
+			println(fmt.Errorf("setting charge target failed, attempt %d/%d waiting and retrying, err: %w", i, maxRetries, err).Error())
+			time.Sleep(time.Second * 3)
+		} else {
+			break
+		}
+
+		if i == maxRetries {
 			return err
 		}
 	}

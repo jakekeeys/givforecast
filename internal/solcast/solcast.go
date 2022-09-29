@@ -2,11 +2,13 @@ package solcast
 
 import (
 	"bytes"
+	"encoding/gob"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"os"
+	"path"
 	"sort"
 	"sync"
 	"time"
@@ -19,14 +21,18 @@ type Client struct {
 	resourceID string
 	data       *ForecastData
 	c          *http.Client
+	cacheDir   string
 }
 
-func NewClient(apiKey, resourceID string) *Client {
+const dataCacheFile = "solcastData.gob"
+
+func NewClient(apiKey, resourceID, cacheDir string) *Client {
 	return &Client{
 		apiKey:     apiKey,
 		baseURL:    "https://api.solcast.com.au/rooftop_sites",
 		resourceID: resourceID,
 		c:          http.DefaultClient,
+		cacheDir:   cacheDir,
 	}
 }
 
@@ -46,6 +52,39 @@ type Forecast struct {
 	Period       string    `json:"period"`
 }
 
+func (c *Client) writeDataCache(data *ForecastData) error {
+	dataCacheFilePath := path.Join(c.cacheDir, dataCacheFile)
+	f, err := os.Create(dataCacheFilePath)
+	if err != nil {
+		return fmt.Errorf("error creating data cache file: %w", err)
+	}
+	defer f.Close()
+
+	err = gob.NewEncoder(f).Encode(data)
+	if err != nil {
+		return fmt.Errorf("error encoding data cache file: %w", err)
+	}
+
+	return nil
+}
+
+func (c *Client) readDataCache() (*ForecastData, error) {
+	dataCacheFilePath := path.Join(c.cacheDir, dataCacheFile)
+	f, err := os.Open(dataCacheFilePath)
+	if err != nil {
+		return nil, fmt.Errorf("error opening data cache file: %w", err)
+	}
+	defer f.Close()
+
+	data := &ForecastData{}
+	err = gob.NewDecoder(f).Decode(data)
+	if err != nil {
+		return nil, fmt.Errorf("error decoding data cache file: %w", err)
+	}
+
+	return data, nil
+}
+
 func (c *Client) SetForecast(fcd ForecastData) error {
 	c.m.Lock()
 	defer c.m.Unlock()
@@ -55,6 +94,12 @@ func (c *Client) SetForecast(fcd ForecastData) error {
 	})
 
 	c.data = &fcd
+	if c.cacheDir != "" {
+		err := c.writeDataCache(&fcd)
+		if err != nil {
+			println(fmt.Errorf("error updating data cache: %w", err))
+		}
+	}
 	return nil
 }
 
@@ -93,6 +138,12 @@ func (c *Client) UpdateForecast() error {
 	})
 
 	c.data = &fcd
+	if c.cacheDir != "" {
+		err := c.writeDataCache(&fcd)
+		if err != nil {
+			println(fmt.Errorf("error updating data cache: %w", err))
+		}
+	}
 	return nil
 }
 
@@ -104,7 +155,16 @@ func (c *Client) GetForecast() (*ForecastData, error) {
 		//	return nil, err
 		//}
 
-		return nil, errors.New("no solcast forecast data available")
+		if c.cacheDir != "" {
+			fcd, err := c.readDataCache()
+			if err != nil {
+				return nil, fmt.Errorf("no solcast forecast data available: %w", err)
+			}
+
+			c.m.Lock()
+			c.data = fcd
+			c.m.Unlock()
+		}
 	}
 
 	c.m.RLock()

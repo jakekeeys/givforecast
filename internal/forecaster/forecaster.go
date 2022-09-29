@@ -172,9 +172,12 @@ func (f *Forecaster) Forecast(t time.Time) (*ForecastDay, error) {
 		return nil, err
 	}
 
-	consumptionAverages, err := f.gec.GetConsumptionAverages()
-	if err != nil {
-		return nil, err
+	var consumptionAverages map[time.Time]float64
+	if f.config.AvgConsumptionKw == 0 {
+		consumptionAverages, err = f.gec.GetConsumptionAverages()
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	t = time.Date(t.Local().Year(), t.Local().Month(), t.Local().Day(), 0, 0, 0, 0, time.Local)
