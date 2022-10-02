@@ -286,6 +286,7 @@ func (f *Forecaster) Forecast(t time.Time) (*ForecastDay, error) {
 			projection.DischargeKwh = forecasts[i-1].DischargeKwh
 			projection.DischargeW = 0
 		}
+		// similar unwinding process if the battery is full
 		if projection.SOC >= 100 {
 			projection.SOC = 100
 			dayChargeKwh = forecasts[i-1].ChargeKwh

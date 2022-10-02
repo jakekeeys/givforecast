@@ -58,12 +58,12 @@ func (s *Server) UpdateChargeTarget() error {
 	println(fmt.Sprintf("setting charge target to %d", t))
 	// todo make this an interface supported by either givtcp or gecloud
 
-	maxRetries := 5
+	maxRetries := 10
 	for i := 1; i < maxRetries+1; i++ {
 		err = s.gtcpc.SetChargeTarget(t)
 		if err != nil {
 			println(fmt.Errorf("setting charge target failed, attempt %d/%d waiting and retrying, err: %w", i, maxRetries, err).Error())
-			time.Sleep(time.Second * 3)
+			time.Sleep(time.Second * time.Duration(i*3))
 		} else {
 			break
 		}
