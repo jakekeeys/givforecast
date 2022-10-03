@@ -271,7 +271,7 @@ func (f *Forecaster) Forecast(t time.Time) (*ForecastDay, error) {
 	recommendedChargeTarget := 100.0
 	if dayMaxSOC > 100 && dayMaxSOC < 200 {
 		recommendedChargeTarget = math.Abs((dayMaxSOC - 100) - 100)
-	} else {
+	} else if dayMaxSOC >= 200 {
 		recommendedChargeTarget = f.config.BatteryReserve
 	}
 
@@ -282,16 +282,27 @@ func (f *Forecaster) Forecast(t time.Time) (*ForecastDay, error) {
 		// todo we could set dayDischargeKwh to the battery capacity and figure out the W from that
 		if projection.SOC <= f.config.BatteryReserve {
 			projection.SOC = f.config.BatteryReserve
+			projection.DischargeW = 0
+			if i == 0 {
+				dayDischargeKwh = 0
+				projection.DischargeKwh = 0
+				continue
+			}
 			dayDischargeKwh = forecasts[i-1].DischargeKwh
 			projection.DischargeKwh = forecasts[i-1].DischargeKwh
-			projection.DischargeW = 0
 		}
 		// similar unwinding process if the battery is full
-		if projection.SOC >= 100 {
+		if projection.SOC > 100 {
 			projection.SOC = 100
+			projection.ChargeW = 0
+			if i == 0 {
+				dayChargeKwh = 0
+				projection.ChargeKwh = 0
+				continue
+
+			}
 			dayChargeKwh = forecasts[i-1].ChargeKwh
 			projection.ChargeKwh = forecasts[i-1].ChargeKwh
-			projection.ChargeW = 0
 		}
 	}
 
