@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/robfig/cron/v3"
@@ -28,7 +29,7 @@ func main() {
 	}
 
 	sc := solcast.NewClient(os.Getenv("SOLCAST_API_KEY"), os.Getenv("SOLCAST_RESOURCE_ID"), os.Getenv("CACHE_DIR"))
-	gec := givenergy.NewClient(os.Getenv("GIVENERGY_USERNAME"), os.Getenv("GIVENERGY_PASSWORD"), os.Getenv("GIVENERGY_SERIAL"), os.Getenv("GIVENERGY_API_KEY"), os.Getenv("CONSUMPTION_AVERAGE_DAYS"))
+	gec := givenergy.NewClient(strings.Split(os.Getenv("GIVENERGY_SERIALS"), ","), os.Getenv("GIVENERGY_API_KEY"))
 	f := forecaster.New(sc, gec)
 	gtcpc := givtcp.NewClient()
 	s := api.NewServer(f, sc, gtcpc, gec)
@@ -44,12 +45,12 @@ func main() {
 	r.POST("/soclast/forecast", s.UpdateForecastDataHandler)
 	r.PUT("/solcast/forecast", s.SetForecastDataHandler)
 	r.GET("/solcast/forecast", s.GetForecastDataHandler)
-	r.POST("/solcast/actuals", s.SubmitSolarActualsHandler)
+	//r.POST("/solcast/actuals", s.SubmitSolarActualsHandler)
 
-	r.POST("/givenergy/consumptionaverages", s.UpdateConsumptionAveragesHandler)
-	r.GET("/givenergy/consumptionaverages", s.GetConsumptionAveragesHandler)
-	r.PUT("/givenergy/consumptionaverages", s.SetConsumptionAveragesHandler)
-	r.GET("/givenergy/batterydata", s.GetBatteryDataHandler)
+	//r.POST("/givenergy/consumptionaverages", s.UpdateConsumptionAveragesHandler)
+	//r.GET("/givenergy/consumptionaverages", s.GetConsumptionAveragesHandler)
+	//r.PUT("/givenergy/consumptionaverages", s.SetConsumptionAveragesHandler)
+	//r.GET("/givenergy/batterydata", s.GetBatteryDataHandler)
 
 	// todo post actual measurements production measurement from ge to solcast
 
@@ -68,18 +69,18 @@ func main() {
 		}
 	}
 
-	ss := os.Getenv("SUBMIT_SOLAR_CRON")
-	if ss != "" {
-		_, err := c.AddFunc(ss, func() {
-			err := s.SubmitSolarActuals()
-			if err != nil {
-				println(fmt.Errorf("err submitting solar measurements: %w", err).Error())
-			}
-		})
-		if err != nil {
-			panic(fmt.Errorf("err scheduling UpdateChargeTarget: %w", err))
-		}
-	}
+	//ss := os.Getenv("SUBMIT_SOLAR_CRON")
+	//if ss != "" {
+	//	_, err := c.AddFunc(ss, func() {
+	//		err := s.SubmitSolarActuals()
+	//		if err != nil {
+	//			println(fmt.Errorf("err submitting solar measurements: %w", err).Error())
+	//		}
+	//	})
+	//	if err != nil {
+	//		panic(fmt.Errorf("err scheduling UpdateChargeTarget: %w", err))
+	//	}
+	//}
 
 	c.Start()
 

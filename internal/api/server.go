@@ -2,7 +2,6 @@ package api
 
 import (
 	"fmt"
-	"sort"
 	"time"
 
 	"github.com/jakekeeys/givforecast/internal/givenergy"
@@ -60,7 +59,8 @@ func (s *Server) UpdateChargeTarget() error {
 
 	maxRetries := 10
 	for i := 1; i < maxRetries+1; i++ {
-		err = s.gtcpc.SetChargeTarget(t)
+		err := s.gec.SetChargeUpperLimit(t)
+		//err = s.gtcpc.SetChargeTarget(t)
 		if err != nil {
 			println(fmt.Errorf("setting charge target failed, attempt %d/%d waiting and retrying, err: %w", i, maxRetries, err).Error())
 			time.Sleep(time.Second * time.Duration(i*3))
@@ -76,54 +76,54 @@ func (s *Server) UpdateChargeTarget() error {
 	return nil
 }
 
-func (s *Server) SubmitSolarActuals() error {
-	println("submitting solar readings to solcast")
-	now := time.Now().UTC()
-	yesterday := time.Date(now.Local().Year(), now.Local().Month(), now.Local().Day(), 0, 0, 0, 0, time.Local).AddDate(0, 0, -1)
-	day, err := s.gec.PlantChartDay(yesterday)
-	if err != nil {
-		return err
-	}
-
-	solarActuals := map[time.Time]float64{}
-	for _, measurement := range day.Data {
-		t, err := time.Parse("2006-01-02 15:04:05", measurement.Time)
-		if err != nil {
-			return err
-		}
-
-		t = roundUpTime(t, time.Minute*10)
-		if v, ok := solarActuals[t]; ok {
-			solarActuals[t] = (v + measurement.Ppv) / 2
-		} else {
-			solarActuals[t] = measurement.Ppv
-		}
-	}
-
-	var measurements []solcast.Measurement
-	for k, v := range solarActuals {
-		if v < 50 {
-			continue
-		}
-
-		measurements = append(measurements, solcast.Measurement{
-			PeriodEnd:  k,
-			Period:     "PT10M",
-			TotalPower: v / 1000,
-		})
-	}
-
-	sort.Slice(measurements, func(i, j int) bool {
-		return measurements[i].PeriodEnd.Before(measurements[j].PeriodEnd)
-	})
-
-	err = s.sc.SubmitMeasurements(&solcast.SubmitMeasurementsRequest{Measurements: measurements})
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
+//func (s *Server) SubmitSolarActuals() error {
+//	println("submitting solar readings to solcast")
+//	now := time.Now().UTC()
+//	yesterday := time.Date(now.Local().Year(), now.Local().Month(), now.Local().Day(), 0, 0, 0, 0, time.Local).AddDate(0, 0, -1)
+//	day, err := s.gec.PlantChartDay(yesterday)
+//	if err != nil {
+//		return err
+//	}
+//
+//	solarActuals := map[time.Time]float64{}
+//	for _, measurement := range day.Data {
+//		t, err := time.Parse("2006-01-02 15:04:05", measurement.Time)
+//		if err != nil {
+//			return err
+//		}
+//
+//		t = roundUpTime(t, time.Minute*10)
+//		if v, ok := solarActuals[t]; ok {
+//			solarActuals[t] = (v + measurement.Ppv) / 2
+//		} else {
+//			solarActuals[t] = measurement.Ppv
+//		}
+//	}
+//
+//	var measurements []solcast.Measurement
+//	for k, v := range solarActuals {
+//		if v < 50 {
+//			continue
+//		}
+//
+//		measurements = append(measurements, solcast.Measurement{
+//			PeriodEnd:  k,
+//			Period:     "PT10M",
+//			TotalPower: v / 1000,
+//		})
+//	}
+//
+//	sort.Slice(measurements, func(i, j int) bool {
+//		return measurements[i].PeriodEnd.Before(measurements[j].PeriodEnd)
+//	})
+//
+//	err = s.sc.SubmitMeasurements(&solcast.SubmitMeasurementsRequest{Measurements: measurements})
+//	if err != nil {
+//		return err
+//	}
+//
+//	return nil
+//}
 
 func roundUpTime(t time.Time, roundOn time.Duration) time.Time {
 	t = t.Round(roundOn)

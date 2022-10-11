@@ -110,45 +110,45 @@ func (s *Server) SetConfigHandler(c *gin.Context) {
 	return
 }
 
-func (s *Server) SetConsumptionAveragesHandler(c *gin.Context) {
-	var data map[time.Time]float64
-	err := c.ShouldBindJSON(&data)
-	if err != nil {
-		c.String(http.StatusInternalServerError, err.Error())
-		return
-	}
+//func (s *Server) SetConsumptionAveragesHandler(c *gin.Context) {
+//	var data map[time.Time]float64
+//	err := c.ShouldBindJSON(&data)
+//	if err != nil {
+//		c.String(http.StatusInternalServerError, err.Error())
+//		return
+//	}
+//
+//	s.gec.SetConsumptionAverages(data)
+//	return
+//}
 
-	s.gec.SetConsumptionAverages(data)
-	return
-}
+//func (s *Server) GetBatteryDataHandler(c *gin.Context) {
+//	data, err := s.gec.GetBatteryData()
+//	if err != nil {
+//		c.String(http.StatusInternalServerError, err.Error())
+//		return
+//	}
+//
+//	c.JSON(http.StatusOK, data)
+//}
 
-func (s *Server) GetBatteryDataHandler(c *gin.Context) {
-	data, err := s.gec.GetBatteryData()
-	if err != nil {
-		c.String(http.StatusInternalServerError, err.Error())
-		return
-	}
+//func (s *Server) GetConsumptionAveragesHandler(c *gin.Context) {
+//	averages, err := s.gec.GetConsumptionAverages()
+//	if err != nil {
+//		c.String(http.StatusInternalServerError, err.Error())
+//		return
+//	}
+//
+//	c.JSON(http.StatusOK, averages)
+//}
 
-	c.JSON(http.StatusOK, data)
-}
-
-func (s *Server) GetConsumptionAveragesHandler(c *gin.Context) {
-	averages, err := s.gec.GetConsumptionAverages()
-	if err != nil {
-		c.String(http.StatusInternalServerError, err.Error())
-		return
-	}
-
-	c.JSON(http.StatusOK, averages)
-}
-
-func (s *Server) UpdateConsumptionAveragesHandler(c *gin.Context) {
-	err := s.gec.UpdateConsumptionAverages()
-	if err != nil {
-		c.String(http.StatusInternalServerError, err.Error())
-		return
-	}
-}
+//func (s *Server) UpdateConsumptionAveragesHandler(c *gin.Context) {
+//	err := s.gec.UpdateConsumptionAverages()
+//	if err != nil {
+//		c.String(http.StatusInternalServerError, err.Error())
+//		return
+//	}
+//}
 
 func (s *Server) SetForecastDataHandler(c *gin.Context) {
 	var data solcast.ForecastData
@@ -188,10 +188,10 @@ func (s *Server) GetForecastDataHandler(c *gin.Context) {
 	return
 }
 
-func (s *Server) SubmitSolarActualsHandler(c *gin.Context) {
-	err := s.SubmitSolarActuals()
-	if err != nil {
-		c.String(http.StatusInternalServerError, err.Error())
-		return
-	}
-}
+//func (s *Server) SubmitSolarActualsHandler(c *gin.Context) {
+//	err := s.SubmitSolarActuals()
+//	if err != nil {
+//		c.String(http.StatusInternalServerError, err.Error())
+//		return
+//	}
+//}
