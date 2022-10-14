@@ -10,6 +10,37 @@ import (
 	"github.com/jakekeeys/givforecast/internal/solcast"
 )
 
+func (s *Server) RootHandler(c *gin.Context) {
+	ds := c.Query("date")
+	if ds == "" {
+		ds = time.Now().Local().Format(dateFormat)
+	}
+
+	d, err := time.Parse(dateFormat, ds)
+	if err != nil {
+		c.String(http.StatusBadRequest, err.Error())
+		return
+	}
+
+	forecast, err := s.f.Forecast(d)
+	if err != nil {
+		c.String(http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	charts, err := ForcastToCharts(forecast)
+	if err != nil {
+		c.String(http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	_, err = c.Writer.Write(charts)
+	if err != nil {
+		c.String(http.StatusInternalServerError, err.Error())
+		return
+	}
+}
+
 func (s *Server) UpdateChargeTargetHandler(c *gin.Context) {
 	err := s.UpdateChargeTarget()
 	if err != nil {

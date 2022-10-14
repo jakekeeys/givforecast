@@ -34,6 +34,8 @@ func main() {
 	gtcpc := givtcp.NewClient()
 	s := api.NewServer(f, sc, gtcpc, gec)
 
+	r.GET("/", s.RootHandler)
+
 	r.GET("/forecast", s.ForecastHandler)
 	r.GET("/forecast/now", s.ForecastNowHandler)
 	r.GET("/forecast/config", s.ConfigHandler)
