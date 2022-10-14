@@ -60,7 +60,6 @@ func (s *Server) UpdateChargeTarget() error {
 	maxRetries := 10
 	for i := 1; i < maxRetries+1; i++ {
 		err := s.gec.SetChargeUpperLimit(t)
-		//err = s.gtcpc.SetChargeTarget(t)
 		if err != nil {
 			println(fmt.Errorf("setting charge target failed, attempt %d/%d waiting and retrying, err: %w", i, maxRetries, err).Error())
 			time.Sleep(time.Second * time.Duration(i*3))

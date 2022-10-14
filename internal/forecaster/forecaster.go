@@ -275,6 +275,8 @@ func (f *Forecaster) Forecast(t time.Time) (*ForecastDay, error) {
 		recommendedChargeTarget = f.config.BatteryReserve
 	}
 
+	dischargeAfterFullKwh := 0.0
+	hitFullyCharged := false
 	for i, projection := range forecasts {
 		projection.SOC = projection.SOC - 100 + recommendedChargeTarget
 		// if the battery is empty unwind discharge and soc changes
@@ -291,18 +293,25 @@ func (f *Forecaster) Forecast(t time.Time) (*ForecastDay, error) {
 			dayDischargeKwh = forecasts[i-1].DischargeKwh
 			projection.DischargeKwh = forecasts[i-1].DischargeKwh
 		}
+
 		// similar unwinding process if the battery is full
-		if projection.SOC > 100 {
+		if projection.SOC > 100 || hitFullyCharged {
+			hitFullyCharged = true
 			projection.SOC = 100
 			projection.ChargeW = 0
 			if i == 0 {
 				dayChargeKwh = 0
 				projection.ChargeKwh = 0
 				continue
-
 			}
 			dayChargeKwh = forecasts[i-1].ChargeKwh
 			projection.ChargeKwh = forecasts[i-1].ChargeKwh
+
+			// we still need to simulate the drain after fully charging, start accumulating discharge once battery is full and discharge is simulated
+			if projection.DischargeW > 0 {
+				dischargeAfterFullKwh = dischargeAfterFullKwh + ((projection.DischargeW * 0.5) / 1000)
+				projection.SOC = ((f.config.StorageCapacityKwh - dischargeAfterFullKwh) / f.config.StorageCapacityKwh) * 100
+			}
 		}
 	}
 
