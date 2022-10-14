@@ -14,14 +14,15 @@ import (
 )
 
 type Config struct {
-	StorageCapacityKwh float64
-	InverterEfficiency float64
-	ACChargeStart      time.Time
-	ACChargeEnd        time.Time
-	BatteryReserve     float64
-	MaxChargeKw        float64
-	MaxDischargeKw     float64
-	AvgConsumptionKw   float64
+	StorageCapacityKwh  float64
+	InverterEfficiency  float64
+	ACChargeStart       time.Time
+	ACChargeEnd         time.Time
+	BatteryReserve      float64
+	MaxChargeKw         float64
+	MaxDischargeKw      float64
+	AvgConsumptionKw    float64
+	BatteryMaxSocTarget float64
 }
 
 func WithConfig(c *Config) Option {
@@ -48,13 +49,14 @@ func New(sc *solcast.Client, gec *givenergy.Client, opts ...Option) *Forecaster 
 		sc:  sc,
 		gec: gec,
 		config: &Config{
-			StorageCapacityKwh: 16.38,         // todo consume from ge cloud (inverter/getInverterInfo)
-			InverterEfficiency: 0.965,         // todo consume from ge cloud
-			ACChargeStart:      acChargeStart, // todo consume from ge cloud (BatteryData/All)
-			ACChargeEnd:        acChargeEnd,   // todo consume from ge cloud (BatteryData/All)
-			BatteryReserve:     4.0,           // todo consume from ge cloud (BatteryData/All)
-			MaxChargeKw:        3.0,           // todo consume from ge cloud
-			MaxDischargeKw:     3.0,           // todo consume from ge cloud
+			StorageCapacityKwh:  16.38,         // todo consume from ge cloud (inverter/getInverterInfo)
+			InverterEfficiency:  0.965,         // todo consume from ge cloud
+			ACChargeStart:       acChargeStart, // todo consume from ge cloud (BatteryData/All)
+			ACChargeEnd:         acChargeEnd,   // todo consume from ge cloud (BatteryData/All)
+			BatteryReserve:      4.0,           // todo consume from ge cloud (BatteryData/All)
+			MaxChargeKw:         3.0,           // todo consume from ge cloud
+			MaxDischargeKw:      3.0,           // todo consume from ge cloud
+			BatteryMaxSocTarget: 100.0,
 		},
 	}
 
@@ -95,6 +97,16 @@ func New(sc *solcast.Client, gec *givenergy.Client, opts ...Option) *Forecaster 
 			println(fmt.Errorf("err parsing MAX_DISCHARGE_KW: %w", err).Error())
 		} else {
 			projector.config.MaxDischargeKw = mdhw
+		}
+	}
+
+	bmsts := os.Getenv("BATTERY_MAX_SOC_TARGET") // todo do this properly using the opts
+	if bmsts != "" {
+		bmst, err := strconv.ParseFloat(bmsts, 10)
+		if err != nil {
+			println(fmt.Errorf("err parsing BATTERY_MAX_SOC_TARGET: %w", err).Error())
+		} else {
+			projector.config.BatteryMaxSocTarget = bmst
 		}
 	}
 
@@ -268,17 +280,17 @@ func (f *Forecaster) Forecast(t time.Time) (*ForecastDay, error) {
 		})
 	}
 
-	recommendedChargeTarget := 100.0
-	if dayMaxSOC > 100 && dayMaxSOC < 200 {
-		recommendedChargeTarget = math.Abs((dayMaxSOC - 100) - 100)
-	} else if dayMaxSOC >= 200 {
+	recommendedChargeTarget := f.config.BatteryMaxSocTarget
+	if dayMaxSOC > f.config.BatteryMaxSocTarget && dayMaxSOC < 100+f.config.BatteryMaxSocTarget {
+		recommendedChargeTarget = math.Abs((dayMaxSOC - f.config.BatteryMaxSocTarget) - f.config.BatteryMaxSocTarget)
+	} else if dayMaxSOC >= 100+f.config.BatteryMaxSocTarget {
 		recommendedChargeTarget = f.config.BatteryReserve
 	}
 
 	dischargeAfterFullKwh := 0.0
 	hitFullyCharged := false
 	for i, projection := range forecasts {
-		projection.SOC = projection.SOC - 100 + recommendedChargeTarget
+		projection.SOC = projection.SOC - f.config.BatteryMaxSocTarget + recommendedChargeTarget
 		// if the battery is empty unwind discharge and soc changes
 		// this will slightly underestimate the dischargeKwh as it would have emptied mid-period
 		// todo we could set dayDischargeKwh to the battery capacity and figure out the W from that
