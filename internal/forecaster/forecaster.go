@@ -18,11 +18,11 @@ type Config struct {
 	InverterEfficiency  float64
 	ACChargeStart       time.Time
 	ACChargeEnd         time.Time
-	BatteryReserve      float64
+	BatteryLowerReserve float64
 	MaxChargeKw         float64
 	MaxDischargeKw      float64
 	AvgConsumptionKw    float64
-	BatteryMaxSocTarget float64
+	BatteryUpperReserve float64
 }
 
 func WithConfig(c *Config) Option {
@@ -53,10 +53,10 @@ func New(sc *solcast.Client, gec *givenergy.Client, opts ...Option) *Forecaster 
 			InverterEfficiency:  0.965,         // todo consume from ge cloud
 			ACChargeStart:       acChargeStart, // todo consume from ge cloud (BatteryData/All)
 			ACChargeEnd:         acChargeEnd,   // todo consume from ge cloud (BatteryData/All)
-			BatteryReserve:      4.0,           // todo consume from ge cloud (BatteryData/All)
+			BatteryLowerReserve: 4.0,           // todo consume from ge cloud (BatteryData/All)
 			MaxChargeKw:         3.0,           // todo consume from ge cloud
 			MaxDischargeKw:      3.0,           // todo consume from ge cloud
-			BatteryMaxSocTarget: 90.0,
+			BatteryUpperReserve: 90.0,
 		},
 	}
 
@@ -100,13 +100,13 @@ func New(sc *solcast.Client, gec *givenergy.Client, opts ...Option) *Forecaster 
 		}
 	}
 
-	bmsts := os.Getenv("BATTERY_MAX_SOC_TARGET") // todo do this properly using the opts
-	if bmsts != "" {
-		bmst, err := strconv.ParseFloat(bmsts, 10)
+	burs := os.Getenv("BATTERY_UPPER_RESERVE") // todo do this properly using the opts
+	if burs != "" {
+		bur, err := strconv.ParseFloat(burs, 10)
 		if err != nil {
-			println(fmt.Errorf("err parsing BATTERY_MAX_SOC_TARGET: %w", err).Error())
+			println(fmt.Errorf("err parsing BATTERY_UPPER_RESERVE: %w", err).Error())
 		} else {
-			projector.config.BatteryMaxSocTarget = bmst
+			projector.config.BatteryUpperReserve = bur
 		}
 	}
 
@@ -219,7 +219,7 @@ func (f *Forecaster) ForecastNow(t time.Time) (*Forecast, error) {
 }
 
 func (f *Forecaster) Forecast(t time.Time) (*ForecastDay, error) {
-	storageReserveKwh := (f.config.BatteryReserve / 100) * f.config.StorageCapacityKwh
+	storageReserveKwh := (f.config.BatteryLowerReserve / 100) * f.config.StorageCapacityKwh
 	simulation, err := f.simulate(t, storageReserveKwh)
 	if err != nil {
 		return nil, err
@@ -227,8 +227,8 @@ func (f *Forecaster) Forecast(t time.Time) (*ForecastDay, error) {
 
 	recommendedChargeKwh := storageReserveKwh + (f.config.StorageCapacityKwh - simulation.DayStorageMaxKwh)
 
-	if f.config.BatteryMaxSocTarget != 100 {
-		capacityReserveKwh := f.config.StorageCapacityKwh - ((f.config.BatteryMaxSocTarget / 100) * f.config.StorageCapacityKwh)
+	if f.config.BatteryUpperReserve != 100 {
+		capacityReserveKwh := f.config.StorageCapacityKwh - ((f.config.BatteryUpperReserve / 100) * f.config.StorageCapacityKwh)
 		recommendedChargeKwh = recommendedChargeKwh - capacityReserveKwh
 	}
 
@@ -271,7 +271,7 @@ func (f *Forecaster) simulate(t time.Time, storageDayStartKwh float64) (*Simulat
 	dischargingPeriodStart := time.Date(t.Year(), t.Month(), t.Day(), f.config.ACChargeEnd.Hour(), 30, 0, 0, time.UTC) // minute hardcoded to avoid initial 5m period caused by charge window offsets
 	// This will only work if the charging period starts after midnight as we're assuming this and setting the date to tomorrow
 	dischargingPeriodEnd := time.Date(t.Year(), t.Month(), t.Day()+1, f.config.ACChargeStart.Hour(), 30, 0, 0, time.UTC) // minute hardcoded to avoid initial 5m period caused by charge window offsets
-	storageReserveKwh := (f.config.BatteryReserve / 100) * f.config.StorageCapacityKwh
+	storageReserveKwh := (f.config.BatteryLowerReserve / 100) * f.config.StorageCapacityKwh
 
 	var dayProductionKwh, dayConsumptionKwh, dayDischargeKwh, dayChargeKwh, dayStorageKwh, dayStorageMaxKwh float64
 	dayStorageKwh = storageDayStartKwh
