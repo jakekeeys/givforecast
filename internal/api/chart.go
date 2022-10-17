@@ -2,6 +2,7 @@ package api
 
 import (
 	"bytes"
+	"fmt"
 	"github.com/go-echarts/go-echarts/v2/charts"
 	"github.com/go-echarts/go-echarts/v2/components"
 	"github.com/go-echarts/go-echarts/v2/opts"
@@ -30,7 +31,7 @@ func ForcastToCharts(f *forecaster.ForecastDay) ([]byte, error) {
 	socChart := charts.NewLine()
 	socChart.SetGlobalOptions(
 		charts.WithTitleOpts(opts.Title{
-			Title: "SOC",
+			Title: fmt.Sprintf("SOC (Overnight Target %.0f%%)", f.RecommendedChargeTarget),
 		}))
 	xAxis = []string{}
 	yAxis = []opts.LineData{}
@@ -87,10 +88,10 @@ func ForcastToCharts(f *forecaster.ForecastDay) ([]byte, error) {
 	page := components.NewPage()
 	page.SetLayout(components.PageFlexLayout)
 
-	page.AddCharts(productionChart)
-	page.AddCharts(consumptionChart)
 	page.AddCharts(socChart)
 	page.AddCharts(chargeDischargeChart)
+	page.AddCharts(productionChart)
+	page.AddCharts(consumptionChart)
 
 	bodyBuf := bytes.NewBuffer([]byte{})
 
