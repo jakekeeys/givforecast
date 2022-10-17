@@ -97,15 +97,21 @@ func (s *Server) ForecastNowHandler(c *gin.Context) {
 }
 
 func (s *Server) ForecastHandler(c *gin.Context) {
-	ds := c.Query("date")
-	if ds == "" {
-		ds = time.Now().Local().Format(dateFormat)
-	}
+	d := time.Now()
 
-	d, err := time.Parse(dateFormat, ds)
-	if err != nil {
-		c.String(http.StatusBadRequest, err.Error())
-		return
+	ds := c.Query("date")
+	if ds != "" {
+		switch ds {
+		case "tomorrow":
+			d = d.Add(24 * time.Hour)
+		default:
+			tp, err := time.Parse(dateFormat, ds)
+			if err != nil {
+				c.String(http.StatusBadRequest, err.Error())
+				return
+			}
+			d = tp
+		}
 	}
 
 	now := time.Now().UTC()
