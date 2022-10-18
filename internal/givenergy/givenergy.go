@@ -10,8 +10,9 @@ import (
 )
 
 const (
-	geCloudV1BaseURL            = "https://api.givenergy.cloud/v1"
-	ACUpperChargeLimitSettingID = 77
+	geCloudV1BaseURL                  = "https://api.givenergy.cloud/v1"
+	ACUpperChargeLimitSettingID       = 77
+	ACUpperChargeLimitEnableSettingID = 17
 )
 
 type Client struct {
@@ -37,57 +38,77 @@ func NewClient(serials []string, apiKey string) *Client {
 }
 
 func (c *Client) SetChargeUpperLimit(limit int) error {
+	for _, serial := range c.serials {
+		if limit == 100 {
+			err := c.sendModifySettingRequest(serial, ACUpperChargeLimitEnableSettingID, false)
+			if err != nil {
+				return err
+			}
+		} else {
+			err := c.sendModifySettingRequest(serial, ACUpperChargeLimitEnableSettingID, true)
+			if err != nil {
+				return err
+			}
+		}
+
+		err := c.sendModifySettingRequest(serial, ACUpperChargeLimitSettingID, limit)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (c *Client) sendModifySettingRequest(serial string, id int, value interface{}) error {
 	type ModifySettingRequest struct {
-		Value int `json:"value"`
+		Value interface{} `json:"value"`
 	}
 
 	type ModifySettingResponse struct {
 		Data struct {
-			Value   float64 `json:"value"`
-			Success bool    `json:"success"`
-			Message string  `json:"message"`
+			Value   interface{} `json:"value"`
+			Success bool        `json:"success"`
+			Message string      `json:"message"`
 		} `json:"data"`
 	}
 
-	for _, serial := range c.serials {
-		println(fmt.Sprintf("setting AC Upper Charge Limit to %d for %s", limit, serial))
-		msr := ModifySettingRequest{Value: limit}
+	msr := ModifySettingRequest{Value: value}
 
-		b, err := json.Marshal(msr)
-		if err != nil {
-			return err
-		}
-		br := bytes.NewReader(b)
+	b, err := json.Marshal(msr)
+	if err != nil {
+		return err
+	}
+	br := bytes.NewReader(b)
 
-		req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("%s/inverter/%s/settings/%d/write", geCloudV1BaseURL, serial, ACUpperChargeLimitSettingID), br)
-		if err != nil {
-			return err
-		}
+	req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("%s/inverter/%s/settings/%d/write", geCloudV1BaseURL, serial, id), br)
+	if err != nil {
+		return err
+	}
 
-		resp, err := c.doRequest(req)
-		if err != nil {
-			return err
-		}
+	resp, err := c.doRequest(req)
+	if err != nil {
+		return err
+	}
 
-		if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
-			return fmt.Errorf("unexpected response code %d", resp.StatusCode)
-		}
+	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
+		return fmt.Errorf("unexpected response code %d", resp.StatusCode)
+	}
 
-		body, err := io.ReadAll(resp.Body)
-		if err != nil {
-			return err
-		}
-		resp.Body.Close()
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return err
+	}
+	resp.Body.Close()
 
-		msResp := ModifySettingResponse{}
-		err = json.Unmarshal(body, &msResp)
-		if err != nil {
-			return err
-		}
+	msResp := ModifySettingResponse{}
+	err = json.Unmarshal(body, &msResp)
+	if err != nil {
+		return err
+	}
 
-		if !msResp.Data.Success {
-			return fmt.Errorf("error setting AC Upper Charge Limit to %d for %s, message %s", limit, serial, msResp.Data.Message)
-		}
+	if !msResp.Data.Success {
+		return fmt.Errorf("error writing setting %d for %s, value %s, message %s", id, serial, value, msResp.Data.Message)
 	}
 
 	return nil

@@ -67,7 +67,7 @@ func (s *Server) SetChargeTargetHandler(c *gin.Context) {
 		return
 	}
 
-	err = s.gtcpc.SetChargeTarget(ctr.ChargeToPercent)
+	err = s.gec.SetChargeUpperLimit(ctr.ChargeToPercent)
 	if err != nil {
 		c.String(http.StatusInternalServerError, err.Error())
 		return
