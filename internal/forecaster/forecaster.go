@@ -56,7 +56,7 @@ func New(sc *solcast.Client, gec *givenergy.Client, opts ...Option) *Forecaster 
 			BatteryLowerReserve: 4.0,           // todo consume from ge cloud (BatteryData/All)
 			MaxChargeKw:         3.0,           // todo consume from ge cloud
 			MaxDischargeKw:      3.0,           // todo consume from ge cloud
-			BatteryUpperReserve: 90.0,
+			BatteryUpperReserve: 100.0,
 		},
 	}
 
@@ -110,6 +110,16 @@ func New(sc *solcast.Client, gec *givenergy.Client, opts ...Option) *Forecaster 
 		}
 	}
 
+	blrs := os.Getenv("BATTERY_LOWER_RESERVE") // todo do this properly using the opts
+	if blrs != "" {
+		blr, err := strconv.ParseFloat(blrs, 10)
+		if err != nil {
+			println(fmt.Errorf("err parsing BATTERY_LOWER_RESERVE: %w", err).Error())
+		} else {
+			projector.config.BatteryLowerReserve = blr
+		}
+	}
+
 	for _, opt := range opts {
 		opt(projector)
 	}
@@ -128,13 +138,14 @@ type ForecastDay struct {
 }
 
 type Simulation struct {
-	Date             time.Time
-	ProductionKwh    float64
-	ConsumptionKwh   float64
-	ChargeKwh        float64
-	DischargeKwh     float64
-	Forecasts        []*Forecast
-	DayStorageMaxKwh float64
+	Date                               time.Time
+	ProductionKwh                      float64
+	ConsumptionKwh                     float64
+	ChargeKwh                          float64
+	DischargeKwh                       float64
+	Forecasts                          []*Forecast
+	DayStorageMaxKwh                   float64
+	ConsumptionBeforeSelfSufficientKwh float64
 }
 
 type Forecast struct {
@@ -225,8 +236,7 @@ func (f *Forecaster) Forecast(t time.Time) (*ForecastDay, error) {
 		return nil, err
 	}
 
-	recommendedChargeKwh := storageReserveKwh + (f.config.StorageCapacityKwh - simulation.DayStorageMaxKwh)
-
+	recommendedChargeKwh := (f.config.StorageCapacityKwh - simulation.DayStorageMaxKwh) + simulation.ConsumptionBeforeSelfSufficientKwh + storageReserveKwh
 	if f.config.BatteryUpperReserve != 100 {
 		capacityReserveKwh := f.config.StorageCapacityKwh - ((f.config.BatteryUpperReserve / 100) * f.config.StorageCapacityKwh)
 		recommendedChargeKwh = recommendedChargeKwh - capacityReserveKwh
@@ -234,6 +244,10 @@ func (f *Forecaster) Forecast(t time.Time) (*ForecastDay, error) {
 
 	if recommendedChargeKwh < storageReserveKwh {
 		recommendedChargeKwh = storageReserveKwh
+	}
+
+	if recommendedChargeKwh > f.config.StorageCapacityKwh {
+		recommendedChargeKwh = f.config.StorageCapacityKwh
 	}
 
 	simulation, err = f.simulate(t, recommendedChargeKwh)
@@ -273,7 +287,8 @@ func (f *Forecaster) simulate(t time.Time, storageDayStartKwh float64) (*Simulat
 	dischargingPeriodEnd := time.Date(t.Year(), t.Month(), t.Day()+1, f.config.ACChargeStart.Hour(), 30, 0, 0, time.UTC) // minute hardcoded to avoid initial 5m period caused by charge window offsets
 	storageReserveKwh := (f.config.BatteryLowerReserve / 100) * f.config.StorageCapacityKwh
 
-	var dayProductionKwh, dayConsumptionKwh, dayDischargeKwh, dayChargeKwh, dayStorageKwh, dayStorageMaxKwh float64
+	var dayProductionKwh, dayConsumptionKwh, dayDischargeKwh, dayChargeKwh, dayStorageKwh, dayStorageMaxKwh, consumptionBeforeSelfSufficientKwh float64
+	var selfSufficient bool
 	dayStorageKwh = storageDayStartKwh
 	var forecasts []*Forecast
 	for _, forecast := range forecast.Forecasts {
@@ -303,9 +318,15 @@ func (f *Forecaster) simulate(t time.Time, storageDayStartKwh float64) (*Simulat
 		if netKwh < 0 {
 			dischargeKwh = math.Min(math.Abs(netKwh)*((1-f.config.InverterEfficiency)+1), f.config.MaxDischargeKw*0.5)
 			dayDischargeKwh = dayDischargeKwh + dischargeKwh
+
+			if !selfSufficient {
+				consumptionBeforeSelfSufficientKwh = consumptionBeforeSelfSufficientKwh + dischargeKwh
+			}
 		} else {
 			chargeKwh = math.Min(math.Abs(netKwh)*f.config.InverterEfficiency, f.config.MaxChargeKw*0.5)
 			dayChargeKwh = dayChargeKwh + chargeKwh
+
+			selfSufficient = true
 		}
 
 		dayStorageKwh = dayStorageKwh + (chargeKwh - dischargeKwh)
@@ -340,11 +361,12 @@ func (f *Forecaster) simulate(t time.Time, storageDayStartKwh float64) (*Simulat
 	}
 
 	return &Simulation{
-		ProductionKwh:    dayProductionKwh,
-		ConsumptionKwh:   dayConsumptionKwh,
-		ChargeKwh:        dayChargeKwh,
-		DischargeKwh:     dayDischargeKwh,
-		Forecasts:        forecasts,
-		DayStorageMaxKwh: dayStorageMaxKwh,
+		ProductionKwh:                      dayProductionKwh,
+		ConsumptionKwh:                     dayConsumptionKwh,
+		ChargeKwh:                          dayChargeKwh,
+		DischargeKwh:                       dayDischargeKwh,
+		Forecasts:                          forecasts,
+		DayStorageMaxKwh:                   dayStorageMaxKwh,
+		ConsumptionBeforeSelfSufficientKwh: consumptionBeforeSelfSufficientKwh,
 	}, nil
 }
