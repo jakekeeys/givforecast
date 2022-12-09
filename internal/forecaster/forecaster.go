@@ -236,12 +236,19 @@ func (f *Forecaster) Forecast(t time.Time) (*ForecastDay, error) {
 		return nil, err
 	}
 
-	recommendedChargeKwh := (f.config.StorageCapacityKwh - simulation.DayStorageMaxKwh) + storageReserveKwh
+	recommendedChargeKwh := storageReserveKwh + (f.config.StorageCapacityKwh - simulation.DayStorageMaxKwh)
 
+	// handle pre self sufficient
 	if recommendedChargeKwh < simulation.ConsumptionBeforeSelfSufficientKwh {
 		recommendedChargeKwh = recommendedChargeKwh + (simulation.ConsumptionBeforeSelfSufficientKwh - recommendedChargeKwh)
 	}
+	simulation, err = f.simulate(t, recommendedChargeKwh)
+	if err != nil {
+		return nil, err
+	}
+	recommendedChargeKwh = recommendedChargeKwh + (f.config.StorageCapacityKwh - simulation.DayStorageMaxKwh)
 
+	// handle capacity reserve
 	if f.config.BatteryUpperReserve != 100 {
 		capacityReserveKwh := f.config.StorageCapacityKwh - ((f.config.BatteryUpperReserve / 100) * f.config.StorageCapacityKwh)
 		recommendedChargeKwh = recommendedChargeKwh - capacityReserveKwh
