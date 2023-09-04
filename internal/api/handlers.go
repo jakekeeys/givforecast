@@ -1,6 +1,7 @@
 package api
 
 import (
+	"fmt"
 	"net/http"
 	"time"
 
@@ -67,10 +68,20 @@ func (s *Server) SetChargeTargetHandler(c *gin.Context) {
 		return
 	}
 
-	err = s.gec.SetChargeUpperLimit(ctr.ChargeToPercent)
-	if err != nil {
-		c.String(http.StatusInternalServerError, err.Error())
-		return
+	maxRetries := 10
+	for i := 1; i < maxRetries+1; i++ {
+		err := s.gec.SetChargeUpperLimit(ctr.ChargeToPercent)
+		if err != nil {
+			println(fmt.Errorf("setting charge target failed, attempt %d/%d waiting and retrying, err: %w", i, maxRetries, err).Error())
+			time.Sleep(time.Second * time.Duration(i*3))
+		} else {
+			break
+		}
+
+		if i == maxRetries {
+			c.String(http.StatusInternalServerError, err.Error())
+			return
+		}
 	}
 }
 
@@ -150,6 +161,78 @@ func (s *Server) SetConfigHandler(c *gin.Context) {
 	}
 
 	s.f.SetConfig(config)
+	return
+}
+
+func (s *Server) SetConsumptionAverage(c *gin.Context) {
+	var value struct {
+		Value float64 `json:"value"`
+	}
+
+	err := c.ShouldBindJSON(&value)
+	if err != nil {
+		c.String(http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	config := s.f.GetConfig()
+	config.AvgConsumptionKw = value.Value
+
+	s.f.SetConfig(*config)
+	return
+}
+
+func (s *Server) SetBatteryUpper(c *gin.Context) {
+	var value struct {
+		Value float64 `json:"value"`
+	}
+
+	err := c.ShouldBindJSON(&value)
+	if err != nil {
+		c.String(http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	config := s.f.GetConfig()
+	config.BatteryUpperReserve = value.Value
+
+	s.f.SetConfig(*config)
+	return
+}
+
+func (s *Server) SetBatteryLower(c *gin.Context) {
+	var value struct {
+		Value float64 `json:"value"`
+	}
+
+	err := c.ShouldBindJSON(&value)
+	if err != nil {
+		c.String(http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	config := s.f.GetConfig()
+	config.BatteryLowerReserve = value.Value
+
+	s.f.SetConfig(*config)
+	return
+}
+
+func (s *Server) SetAutomaticTargets(c *gin.Context) {
+	var value struct {
+		Value bool `json:"value"`
+	}
+
+	err := c.ShouldBindJSON(&value)
+	if err != nil {
+		c.String(http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	config := s.f.GetConfig()
+	config.AutomaticTargetsEnabled = value.Value
+
+	s.f.SetConfig(*config)
 	return
 }
 

@@ -14,15 +14,16 @@ import (
 )
 
 type Config struct {
-	StorageCapacityKwh  float64
-	InverterEfficiency  float64
-	ACChargeStart       time.Time
-	ACChargeEnd         time.Time
-	BatteryLowerReserve float64
-	MaxChargeKw         float64
-	MaxDischargeKw      float64
-	AvgConsumptionKw    float64
-	BatteryUpperReserve float64
+	StorageCapacityKwh      float64
+	InverterEfficiency      float64
+	ACChargeStart           time.Time
+	ACChargeEnd             time.Time
+	BatteryLowerReserve     float64
+	MaxChargeKw             float64
+	MaxDischargeKw          float64
+	AvgConsumptionKw        float64
+	BatteryUpperReserve     float64
+	AutomaticTargetsEnabled bool
 }
 
 func WithConfig(c *Config) Option {
@@ -49,14 +50,15 @@ func New(sc *solcast.Client, gec *givenergy.Client, opts ...Option) *Forecaster 
 		sc:  sc,
 		gec: gec,
 		config: &Config{
-			StorageCapacityKwh:  7.38,          // todo consume from ge cloud (inverter/getInverterInfo)
-			InverterEfficiency:  0.965,         // todo consume from ge cloud
-			ACChargeStart:       acChargeStart, // todo consume from ge cloud (BatteryData/All)
-			ACChargeEnd:         acChargeEnd,   // todo consume from ge cloud (BatteryData/All)
-			BatteryLowerReserve: 4.0,           // todo consume from ge cloud (BatteryData/All)
-			MaxChargeKw:         3.0,           // todo consume from ge cloud
-			MaxDischargeKw:      3.0,           // todo consume from ge cloud
-			BatteryUpperReserve: 100.0,
+			StorageCapacityKwh:      7.38,          // todo consume from ge cloud (inverter/getInverterInfo)
+			InverterEfficiency:      0.965,         // todo consume from ge cloud
+			ACChargeStart:           acChargeStart, // todo consume from ge cloud (BatteryData/All)
+			ACChargeEnd:             acChargeEnd,   // todo consume from ge cloud (BatteryData/All)
+			BatteryLowerReserve:     4.0,           // todo consume from ge cloud (BatteryData/All)
+			MaxChargeKw:             3.0,           // todo consume from ge cloud
+			MaxDischargeKw:          3.0,           // todo consume from ge cloud
+			BatteryUpperReserve:     100.0,
+			AutomaticTargetsEnabled: true,
 		},
 	}
 

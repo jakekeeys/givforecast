@@ -40,6 +40,10 @@ func main() {
 	r.GET("/forecast/now", s.ForecastNowHandler)
 	r.GET("/forecast/config", s.ConfigHandler)
 	r.PUT("/forecast/config", s.SetConfigHandler)
+	r.PUT("/forecast/config/consumptionaverage", s.SetConsumptionAverage)
+	r.PUT("/forecast/config/batteryupper", s.SetBatteryUpper)
+	r.PUT("/forecast/config/batterylower", s.SetBatteryLower)
+	r.PUT("/forecast/config/automatictargets", s.SetAutomaticTargets)
 
 	r.POST("/givtcp/chargetarget", s.UpdateChargeTargetHandler)
 	r.PUT("/givtcp/chargetarget", s.SetChargeTargetHandler)
