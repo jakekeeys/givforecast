@@ -7,21 +7,24 @@ import (
 	"io"
 	"net/http"
 	"net/http/cookiejar"
+	"time"
 )
 
 const (
 	geCloudV1BaseURL                  = "https://api.givenergy.cloud/v1"
 	ACUpperChargeLimitSettingID       = 77
 	ACUpperChargeLimitEnableSettingID = 17
+	EMSChargeSlot1SOCLimit            = 395
 )
 
 type Client struct {
 	c       *http.Client
 	serials []string
 	apiKey  string
+	ems     bool
 }
 
-func NewClient(serials []string, apiKey string) *Client {
+func NewClient(serials []string, apiKey string, ems bool) *Client {
 	jar, err := cookiejar.New(nil)
 	if err != nil {
 		panic(err)
@@ -34,29 +37,106 @@ func NewClient(serials []string, apiKey string) *Client {
 		c:       &client,
 		serials: serials,
 		apiKey:  apiKey,
+		ems:     ems,
 	}
+}
+
+type SystemData struct {
+	Data struct {
+		Time   time.Time `json:"time"`
+		Status string    `json:"status"`
+		Solar  struct {
+			Power  int `json:"power"`
+			Arrays []struct {
+				Array   int     `json:"array"`
+				Voltage float64 `json:"voltage"`
+				Current float64 `json:"current"`
+				Power   int     `json:"power"`
+			} `json:"arrays"`
+		} `json:"solar"`
+		Grid struct {
+			Voltage   float64 `json:"voltage"`
+			Current   float64 `json:"current"`
+			Power     int     `json:"power"`
+			Frequency float64 `json:"frequency"`
+		} `json:"grid"`
+		Battery struct {
+			Percent     int `json:"percent"`
+			Power       int `json:"power"`
+			Temperature int `json:"temperature"`
+		} `json:"battery"`
+		Inverter struct {
+			Temperature     float64 `json:"temperature"`
+			Power           int     `json:"power"`
+			OutputVoltage   float64 `json:"output_voltage"`
+			OutputFrequency float64 `json:"output_frequency"`
+			EpsPower        int     `json:"eps_power"`
+		} `json:"inverter"`
+		Consumption int `json:"consumption"`
+	} `json:"data"`
+}
+
+func (c *Client) GetLatestSystemData() (map[string]SystemData, error) {
+	sds := make(map[string]SystemData)
+	for _, serial := range c.serials {
+		req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("%s/inverter/%s/meter-data/latest", geCloudV1BaseURL, serial), nil)
+		if err != nil {
+			return nil, err
+		}
+
+		resp, err := c.doRequest(req)
+		if err != nil {
+			return nil, err
+		}
+
+		if resp.StatusCode != http.StatusOK {
+			return nil, fmt.Errorf("unexpected response code %d", resp.StatusCode)
+		}
+
+		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return nil, err
+		}
+		resp.Body.Close()
+
+		sd := SystemData{}
+		err = json.Unmarshal(body, &sd)
+		if err != nil {
+			return nil, err
+		}
+
+		sds[serial] = sd
+	}
+
+	return nil, nil
 }
 
 func (c *Client) SetChargeUpperLimit(limit int) error {
 	for _, serial := range c.serials {
-		if limit == 100 {
-			err := c.sendModifySettingRequest(serial, ACUpperChargeLimitEnableSettingID, false)
+		if c.ems {
+			err := c.sendModifySettingRequest(serial, EMSChargeSlot1SOCLimit, limit)
 			if err != nil {
 				return err
 			}
 		} else {
-			err := c.sendModifySettingRequest(serial, ACUpperChargeLimitEnableSettingID, true)
+			if limit == 100 {
+				err := c.sendModifySettingRequest(serial, ACUpperChargeLimitEnableSettingID, false)
+				if err != nil {
+					return err
+				}
+			} else {
+				err := c.sendModifySettingRequest(serial, ACUpperChargeLimitEnableSettingID, true)
+				if err != nil {
+					return err
+				}
+			}
+
+			err := c.sendModifySettingRequest(serial, ACUpperChargeLimitSettingID, limit)
 			if err != nil {
 				return err
 			}
 		}
-
-		err := c.sendModifySettingRequest(serial, ACUpperChargeLimitSettingID, limit)
-		if err != nil {
-			return err
-		}
 	}
-
 	return nil
 }
 

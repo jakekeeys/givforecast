@@ -29,7 +29,7 @@ func main() {
 	}
 
 	sc := solcast.NewClient(os.Getenv("SOLCAST_API_KEY"), os.Getenv("SOLCAST_RESOURCE_ID"), os.Getenv("CACHE_DIR"))
-	gec := givenergy.NewClient(strings.Split(os.Getenv("GIVENERGY_SERIALS"), ","), os.Getenv("GIVENERGY_API_KEY"))
+	gec := givenergy.NewClient(strings.Split(os.Getenv("GIVENERGY_SERIALS"), ","), os.Getenv("GIVENERGY_API_KEY"), os.Getenv("GIVENERGY_EMS") == "true")
 	f := forecaster.New(sc, gec)
 	gtcpc := givtcp.NewClient()
 	s := api.NewServer(f, sc, gtcpc, gec)
