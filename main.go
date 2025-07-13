@@ -1,7 +1,10 @@
 package main
 
 import (
+	"context"
 	"fmt"
+	"log/slog"
+	"net/http"
 	"os"
 	"strings"
 	"time"
@@ -10,13 +13,20 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/jakekeeys/givforecast/internal/api"
+	"github.com/jakekeeys/givforecast/internal/assist"
 	"github.com/jakekeeys/givforecast/internal/forecaster"
 	"github.com/jakekeeys/givforecast/internal/givenergy"
 	"github.com/jakekeeys/givforecast/internal/givtcp"
 	"github.com/jakekeeys/givforecast/internal/solcast"
+	"github.com/jakekeeys/givforecast/internal/supervisor"
 )
 
 func main() {
+	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
+		Level: slog.LevelDebug,
+	}))
+	slog.SetDefault(logger)
+
 	r := gin.Default()
 
 	tzl := os.Getenv("TZ_LOCATION")
@@ -27,6 +37,15 @@ func main() {
 		}
 		time.Local = loc
 	}
+
+	hac := assist.New(context.Background(), http.DefaultClient, os.Getenv("HA_TOKEN"), os.Getenv("HA_URL"))
+	supervisor, err := supervisor.New(supervisor.Config{
+		PollInterval: 60 * time.Second,
+	}, context.Background(), hac)
+	if err != nil {
+		panic(err)
+	}
+	supervisor.Start()
 
 	sc := solcast.NewClient(os.Getenv("SOLCAST_API_KEY"), os.Getenv("SOLCAST_RESOURCE_ID"), os.Getenv("CACHE_DIR"))
 	gec := givenergy.NewClient(strings.Split(os.Getenv("GIVENERGY_SERIALS"), ","), os.Getenv("GIVENERGY_API_KEY"), os.Getenv("GIVENERGY_EMS") == "true")
