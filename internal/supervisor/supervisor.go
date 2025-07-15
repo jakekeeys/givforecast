@@ -27,6 +27,7 @@ type Supervisor struct {
 
 type Config struct {
 	PollInterval time.Duration
+	Hysteresis   int // e.g., 2 means 2% SOC buffer
 }
 
 func New(cfg Config, ctx context.Context, hac *assist.Client) (*Supervisor, error) {
@@ -72,15 +73,16 @@ func (s *Supervisor) poll() error {
 	if err != nil {
 		return err
 	}
+	slog.Debug("got state", "state", state)
 
 	switch {
-	case state.SOC <= state.Target && !s.chargingEnabled(state):
+	case state.SOC <= state.Target-s.cfg.Hysteresis && !s.chargingEnabled(state):
 		err := s.enableCharging()
 		if err != nil {
 			return err
 		}
 		slog.Info("enabled charging")
-	case state.SOC > state.Target && s.chargingEnabled(state):
+	case state.SOC >= state.Target && s.chargingEnabled(state):
 		err := s.disableCharging()
 		if err != nil {
 			return err
