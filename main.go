@@ -40,7 +40,9 @@ func main() {
 
 	hac := assist.New(context.Background(), http.DefaultClient, os.Getenv("HA_TOKEN"), os.Getenv("HA_URL"))
 	supervisor, err := supervisor.New(supervisor.Config{
-		PollInterval: 60 * time.Second,
+		PollInterval:                   60 * time.Second,
+		HAChargePeriodStartOptionValue: os.Getenv("HA_CHARGE_PERIOD_START_OPTION_VALUE"),
+		HAChargePeriodEndOptionValue:   os.Getenv("HA_CHARGE_PERIOD_END_OPTION_VALUE"),
 	}, context.Background(), hac)
 	if err != nil {
 		panic(err)
@@ -51,7 +53,7 @@ func main() {
 	gec := givenergy.NewClient(strings.Split(os.Getenv("GIVENERGY_SERIALS"), ","), os.Getenv("GIVENERGY_API_KEY"), os.Getenv("GIVENERGY_EMS") == "true")
 	f := forecaster.New(sc, gec)
 	gtcpc := givtcp.NewClient()
-	s := api.NewServer(f, sc, gtcpc, gec)
+	s := api.NewServer(f, sc, gtcpc, gec, hac)
 
 	r.GET("/", s.RootHandler)
 

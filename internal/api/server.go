@@ -1,10 +1,13 @@
 package api
 
 import (
-	"fmt"
+	"strconv"
 	"time"
 
+	"github.com/jakekeeys/givforecast/internal/assist"
 	"github.com/jakekeeys/givforecast/internal/givenergy"
+
+	"log/slog"
 
 	"github.com/jakekeeys/givforecast/internal/forecaster"
 	"github.com/jakekeeys/givforecast/internal/givtcp"
@@ -14,32 +17,39 @@ import (
 const (
 	dateFormat = "2006-01-02"
 	timeFormat = "2006-01-02T15:04"
+
+	HA_CHARGE_TARGET_ENTITY_ID = "number.givtcp_ems2503039_ems_charge_target_soc_1"
 )
 
 type Server struct {
-	f     *forecaster.Forecaster
-	sc    *solcast.Client
-	gtcpc *givtcp.Client
-	gec   *givenergy.Client
+	f      *forecaster.Forecaster
+	sc     *solcast.Client
+	gtcpc  *givtcp.Client
+	gec    *givenergy.Client
+	hac    *assist.Client
+	logger *slog.Logger
 }
 
-func NewServer(f *forecaster.Forecaster, sc *solcast.Client, gtcpc *givtcp.Client, gec *givenergy.Client) *Server {
+func NewServer(f *forecaster.Forecaster, sc *solcast.Client, gtcpc *givtcp.Client, gec *givenergy.Client, hac *assist.Client) *Server {
+	logger := slog.Default().With("component", "api.Server")
 	return &Server{
-		f:     f,
-		sc:    sc,
-		gtcpc: gtcpc,
-		gec:   gec,
+		f:      f,
+		sc:     sc,
+		gtcpc:  gtcpc,
+		gec:    gec,
+		hac:    hac,
+		logger: logger,
 	}
 }
 
 func (s *Server) UpdateChargeTarget() error {
-	println("updating solar forecasts")
+	s.logger.Info("updating solar forecasts")
 	err := s.sc.UpdateForecast()
 	if err != nil {
 		return err
 	}
 
-	//println("updating consumption averages")
+	//s.logger.Info("updating consumption averages")
 	//err = s.gec.UpdateConsumptionAverages()
 	//if err != nil {
 	//	return err
@@ -47,31 +57,47 @@ func (s *Server) UpdateChargeTarget() error {
 
 	now := time.Now().UTC()
 	d := time.Date(now.Local().Year(), now.Local().Month(), now.Local().Day(), 0, 0, 0, 0, time.Local)
-	println(fmt.Sprintf("forecasting date %s", d.String()))
+	s.logger.Info("forecasting date", "date", d.String())
 	forecast, err := s.f.Forecast(d)
 	if err != nil {
 		return err
 	}
 
 	t := int(forecast.RecommendedChargeTarget)
-	println(fmt.Sprintf("setting charge target to %d", t))
+	s.logger.Info("setting charge target", "target", t)
 	// todo make this an interface supported by either givtcp or gecloud
 
 	if s.f.GetConfig().AutomaticTargetsEnabled {
-		maxRetries := 10
-		for i := 1; i < maxRetries+1; i++ {
-			err := s.gec.SetChargeUpperLimit(t)
-			if err != nil {
-				println(fmt.Errorf("setting charge target failed, attempt %d/%d waiting and retrying, err: %w", i, maxRetries, err).Error())
-				time.Sleep(time.Second * time.Duration(i*3))
-			} else {
-				break
-			}
-
-			if i == maxRetries {
-				return err
-			}
+		state, err := s.hac.GetState(HA_CHARGE_TARGET_ENTITY_ID)
+		if err != nil {
+			return err
 		}
+
+		if state.State == strconv.Itoa(t) {
+			s.logger.Info("charge target is already set to the desired value")
+			return nil
+		}
+
+		s.logger.Info("setting charge target", "target", t)
+		err = s.hac.SetNumberValue(HA_CHARGE_TARGET_ENTITY_ID, strconv.Itoa(t))
+		if err != nil {
+			return err
+		}
+
+		// maxRetries := 10
+		// for i := 1; i < maxRetries+1; i++ {
+		// 	err := s.gec.SetChargeUpperLimit(t)
+		// 	if err != nil {
+		// 		println(fmt.Errorf("setting charge target failed, attempt %d/%d waiting and retrying, err: %w", i, maxRetries, err).Error())
+		// 		time.Sleep(time.Second * time.Duration(i*3))
+		// 	} else {
+		// 		break
+		// 	}
+
+		// 	if i == maxRetries {
+		// 		return err
+		// 	}
+		// }
 	}
 
 	return nil

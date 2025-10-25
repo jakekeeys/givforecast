@@ -1,8 +1,8 @@
 package api
 
 import (
-	"fmt"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/jakekeeys/givforecast/internal/forecaster"
@@ -68,21 +68,41 @@ func (s *Server) SetChargeTargetHandler(c *gin.Context) {
 		return
 	}
 
-	maxRetries := 10
-	for i := 1; i < maxRetries+1; i++ {
-		err := s.gec.SetChargeUpperLimit(ctr.ChargeToPercent)
-		if err != nil {
-			println(fmt.Errorf("setting charge target failed, attempt %d/%d waiting and retrying, err: %w", i, maxRetries, err).Error())
-			time.Sleep(time.Second * time.Duration(i*3))
-		} else {
-			break
-		}
-
-		if i == maxRetries {
-			c.String(http.StatusInternalServerError, err.Error())
-			return
-		}
+	state, err := s.hac.GetState(HA_CHARGE_TARGET_ENTITY_ID)
+	if err != nil {
+		c.String(http.StatusInternalServerError, err.Error())
+		return
 	}
+
+	if state.State == strconv.Itoa(ctr.ChargeToPercent) {
+		c.String(http.StatusOK, "charge target is already set to the desired value")
+		return
+	}
+
+	s.logger.Info("setting charge target", "target", ctr.ChargeToPercent)
+	err = s.hac.SetNumberValue(HA_CHARGE_TARGET_ENTITY_ID, strconv.Itoa(ctr.ChargeToPercent))
+	if err != nil {
+		c.String(http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	c.String(http.StatusOK, "charge target set to "+strconv.Itoa(ctr.ChargeToPercent))
+
+	// maxRetries := 10
+	// for i := 1; i < maxRetries+1; i++ {
+	// 	err := s.gec.SetChargeUpperLimit(ctr.ChargeToPercent)
+	// 	if err != nil {
+	// 		println(fmt.Errorf("setting charge target failed, attempt %d/%d waiting and retrying, err: %w", i, maxRetries, err).Error())
+	// 		time.Sleep(time.Second * time.Duration(i*3))
+	// 	} else {
+	// 		break
+	// 	}
+
+	// 	if i == maxRetries {
+	// 		c.String(http.StatusInternalServerError, err.Error())
+	// 		return
+	// 	}
+	// }
 }
 
 func (s *Server) ForecastNowHandler(c *gin.Context) {
@@ -161,7 +181,6 @@ func (s *Server) SetConfigHandler(c *gin.Context) {
 	}
 
 	s.f.SetConfig(config)
-	return
 }
 
 func (s *Server) SetConsumptionAverage(c *gin.Context) {
@@ -179,7 +198,6 @@ func (s *Server) SetConsumptionAverage(c *gin.Context) {
 	config.AvgConsumptionKw = value.Value
 
 	s.f.SetConfig(*config)
-	return
 }
 
 func (s *Server) SetBatteryUpper(c *gin.Context) {
@@ -197,7 +215,6 @@ func (s *Server) SetBatteryUpper(c *gin.Context) {
 	config.BatteryUpperReserve = value.Value
 
 	s.f.SetConfig(*config)
-	return
 }
 
 func (s *Server) SetBatteryLower(c *gin.Context) {
@@ -215,7 +232,6 @@ func (s *Server) SetBatteryLower(c *gin.Context) {
 	config.BatteryLowerReserve = value.Value
 
 	s.f.SetConfig(*config)
-	return
 }
 
 func (s *Server) SetAutomaticTargets(c *gin.Context) {
@@ -233,7 +249,6 @@ func (s *Server) SetAutomaticTargets(c *gin.Context) {
 	config.AutomaticTargetsEnabled = value.Value
 
 	s.f.SetConfig(*config)
-	return
 }
 
 //func (s *Server) SetConsumptionAveragesHandler(c *gin.Context) {
@@ -245,7 +260,6 @@ func (s *Server) SetAutomaticTargets(c *gin.Context) {
 //	}
 //
 //	s.gec.SetConsumptionAverages(data)
-//	return
 //}
 
 //func (s *Server) GetBatteryDataHandler(c *gin.Context) {
@@ -289,8 +303,6 @@ func (s *Server) SetForecastDataHandler(c *gin.Context) {
 		c.String(http.StatusInternalServerError, err.Error())
 		return
 	}
-
-	return
 }
 
 func (s *Server) UpdateForecastDataHandler(c *gin.Context) {
@@ -299,8 +311,6 @@ func (s *Server) UpdateForecastDataHandler(c *gin.Context) {
 		c.String(http.StatusInternalServerError, err.Error())
 		return
 	}
-
-	return
 }
 
 func (s *Server) GetForecastDataHandler(c *gin.Context) {
@@ -311,7 +321,6 @@ func (s *Server) GetForecastDataHandler(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, forecast)
-	return
 }
 
 //func (s *Server) SubmitSolarActualsHandler(c *gin.Context) {

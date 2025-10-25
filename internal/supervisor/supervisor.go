@@ -15,42 +15,56 @@ const (
 	HA_CHARGE_PERIOD_START_ENTITY_ID = "select.givtcp_ems2503039_ems_charge_start_time_slot_1"
 	HA_CHARGE_PERIOD_END_ENTITY_ID   = "select.givtcp_ems2503039_ems_charge_end_time_slot_1"
 
-	HA_CHARGE_PERIOD_START_OPTION_VALUE = "01:30:00"
-	HA_CHARGE_PERIOD_END_OPTION_VALUE   = "08:30:00"
+	//HA_CHARGE_PERIOD_START_OPTION_VALUE = "01:30:00"
+	//HA_CHARGE_PERIOD_END_OPTION_VALUE   = "08:30:00"
 )
 
 type Supervisor struct {
-	cfg Config
-	ctx context.Context
-	hac *assist.Client
+	cfg    Config
+	ctx    context.Context
+	hac    *assist.Client
+	logger *slog.Logger
 }
 
 type Config struct {
-	PollInterval time.Duration
-	Hysteresis   int // e.g., 2 means 2% SOC buffer
+	PollInterval                   time.Duration
+	HAChargePeriodStartOptionValue string
+	HAChargePeriodEndOptionValue   string
 }
 
 func New(cfg Config, ctx context.Context, hac *assist.Client) (*Supervisor, error) {
+	logger := slog.Default().With("component", "supervisor")
 	return &Supervisor{
-		cfg: cfg,
-		ctx: ctx,
-		hac: hac,
+		cfg:    cfg,
+		ctx:    ctx,
+		hac:    hac,
+		logger: logger,
 	}, nil
 }
 
 func (s *Supervisor) Start() {
 	go func() {
-		slog.Info("starting supervisor")
-		err := s.poll()
+		// init charge opts
+		err := s.hac.SetSelectOption(HA_CHARGE_PERIOD_END_ENTITY_ID, s.cfg.HAChargePeriodEndOptionValue)
 		if err != nil {
-			slog.Error("failed to poll", err)
+			s.logger.Error("failed to set charge period end option", err)
+		}
+		err = s.hac.SetSelectOption(HA_CHARGE_PERIOD_START_ENTITY_ID, s.cfg.HAChargePeriodStartOptionValue)
+		if err != nil {
+			s.logger.Error("failed to set charge period start option", err)
+		}
+
+		s.logger.Info("starting supervisor")
+		err = s.poll()
+		if err != nil {
+			s.logger.Error("failed to poll", err)
 		}
 		for {
 			select {
 			case <-time.After(s.cfg.PollInterval):
 				err := s.poll()
 				if err != nil {
-					slog.Error("failed to poll", err)
+					s.logger.Error("failed to poll", err)
 				}
 			case <-s.ctx.Done():
 				return
@@ -65,7 +79,7 @@ func (s *Supervisor) poll() error {
 	chargingPeriodEnd := time.Date(now.Year(), now.Month(), now.Day(), 8, 30, 0, 0, time.UTC)
 
 	if now.Before(chargingPeriodStart) || now.After(chargingPeriodEnd) {
-		slog.Debug("not in charging period")
+		s.logger.Debug("not in charging period")
 		return nil
 	}
 
@@ -73,23 +87,29 @@ func (s *Supervisor) poll() error {
 	if err != nil {
 		return err
 	}
-	slog.Debug("got state", "state", state)
+	s.logger.Debug("got state", "state", state)
 
 	switch {
-	case state.SOC <= state.Target-s.cfg.Hysteresis && !s.chargingEnabled(state):
+	case state.SOC <= state.Target && !s.chargingEnabled(state):
 		err := s.enableCharging()
 		if err != nil {
 			return err
 		}
-		slog.Info("enabled charging")
-	case state.SOC >= state.Target && s.chargingEnabled(state):
+		s.logger.Info("enabled charging")
+	case state.SOC > state.Target && s.chargingEnabled(state):
+		// debounce
+		if !(state.SOC > state.Target+2) {
+			s.logger.Debug("waiting for soc to exceed target+threshold before disabling charging")
+			return nil
+		}
+
 		err := s.disableCharging()
 		if err != nil {
 			return err
 		}
-		slog.Info("disabled charging")
+		s.logger.Info("disabled charging")
 	default:
-		slog.Debug("no action required")
+		s.logger.Debug("no action required")
 	}
 
 	return nil
@@ -107,11 +127,11 @@ func (s *Supervisor) chargingEnabled(state *State) bool {
 }
 
 func (s *Supervisor) enableCharging() error {
-	return s.hac.SetSelectOption(HA_CHARGE_PERIOD_END_ENTITY_ID, HA_CHARGE_PERIOD_END_OPTION_VALUE)
+	return s.hac.SetSelectOption(HA_CHARGE_PERIOD_END_ENTITY_ID, s.cfg.HAChargePeriodEndOptionValue)
 }
 
 func (s *Supervisor) disableCharging() error {
-	return s.hac.SetSelectOption(HA_CHARGE_PERIOD_END_ENTITY_ID, HA_CHARGE_PERIOD_START_OPTION_VALUE)
+	return s.hac.SetSelectOption(HA_CHARGE_PERIOD_END_ENTITY_ID, s.cfg.HAChargePeriodStartOptionValue)
 }
 
 func (s *Supervisor) getState() (*State, error) {
