@@ -1,0 +1,47 @@
+name: givforecast
+version: "1.0.0"
+slug: givforecast
+description: Solcast-driven charge targets for GivEnergy batteries
+url: https://github.com/jakekeeys/givforecast
+arch:
+  - aarch64
+  - amd64
+image: ghcr.io/jakekeeys/givforecast
+startup: application
+boot: auto
+ports:
+  8080/tcp: 8080
+watchdog: tcp://[HOST]:[PORT:8080]
+environment:
+  CACHE_DIR: /data
+options:
+  TZ_LOCATION: Europe/London
+  HA_URL: http://homeassistant:8123
+  HA_CHARGE_PERIOD_START_OPTION_VALUE: "00:35:00"
+  HA_CHARGE_PERIOD_END_OPTION_VALUE: "07:25:00"
+  GIVENERGY_EMS: "true"
+  BATTERY_UPPER_RESERVE: "100.0"
+  BATTERY_LOWER_RESERVE: "10.0"
+  AVG_CONS_KWH: "2.5"
+  STORAGE_CAPACITY_KWH: "49.2"
+  MAX_CHARGE_KW: "9.0"
+  MAX_DISCHARGE_KW: "9.0"
+  UPDATE_TARGET_CRON: "15 0,1,2,3,4,5,6 * * *"
+schema:
+  TZ_LOCATION: str
+  HA_URL: url
+  HA_TOKEN: password
+  HA_CHARGE_PERIOD_START_OPTION_VALUE: str
+  HA_CHARGE_PERIOD_END_OPTION_VALUE: str
+  SOLCAST_API_KEY: password
+  SOLCAST_RESOURCE_ID: str
+  GIVENERGY_SERIALS: str
+  GIVENERGY_API_KEY: password
+  GIVENERGY_EMS: str
+  BATTERY_UPPER_RESERVE: str
+  BATTERY_LOWER_RESERVE: str
+  AVG_CONS_KWH: str
+  STORAGE_CAPACITY_KWH: str
+  MAX_CHARGE_KW: str
+  MAX_DISCHARGE_KW: str
+  UPDATE_TARGET_CRON: str

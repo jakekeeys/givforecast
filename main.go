@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -26,6 +27,19 @@ func main() {
 		Level: slog.LevelDebug,
 	}))
 	slog.SetDefault(logger)
+
+	// ponytail: as a Home Assistant app, options arrive in /data/options.json; keys are env var names
+	if b, err := os.ReadFile("/data/options.json"); err == nil {
+		var opts map[string]any
+		if err := json.Unmarshal(b, &opts); err != nil {
+			panic(err)
+		}
+		for k, v := range opts {
+			if os.Getenv(k) == "" {
+				os.Setenv(k, fmt.Sprint(v))
+			}
+		}
+	}
 
 	r := gin.Default()
 
